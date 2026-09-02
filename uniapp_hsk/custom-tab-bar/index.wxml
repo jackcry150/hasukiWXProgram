@@ -1,0 +1,26 @@
+<view class="custom-tab-bar">
+  <view
+    wx:for="{{list}}"
+    wx:key="pagePath"
+    class="tab-item"
+    data-index="{{index}}"
+    data-path="{{item.pagePath}}"
+    bindtap="switchTab"
+  >
+    <image wx:if="{{index === 0 && selected === 0}}" class="tab-icon" src="./icon_home_select.png" />
+    <image wx:if="{{index === 0 && selected !== 0}}" class="tab-icon" src="./icon_home.png" />
+    <image wx:if="{{index === 1 && selected === 1}}" class="tab-icon" src="./icon_album_select.png" />
+    <image wx:if="{{index === 1 && selected !== 1}}" class="tab-icon" src="./icon_album.png" />
+    <image wx:if="{{index === 2 && selected === 2}}" class="tab-icon" src="./icon_verify_select.png" />
+    <image wx:if="{{index === 2 && selected !== 2}}" class="tab-icon" src="./icon_verify.png" />
+    <image wx:if="{{index === 3 && selected === 3}}" class="tab-icon" src="./icon_my_select.png" />
+    <image wx:if="{{index === 3 && selected !== 3}}" class="tab-icon" src="./icon_my.png" />
+    <view
+      class="tab-text"
+      style="color: {{selected === index ? selectedColor : color}}"
+    >
+      {{item.text}}
+    </view>
+  </view>
+</view>
+
