@@ -1,5 +1,6 @@
 <template>
 	<view class="create-order">
+        <scroll-view class="order-scroll" scroll-y :show-scrollbar="false">
 		<!-- 地址提示 -->
 		<view class="address-notice">
 			<view class="address-info">
@@ -71,7 +72,16 @@
 					<text class="method-label">尾款</text>
 					<view class="method-value">
 						<text class="balance-amount">¥{{ totalBalanceAmount.toFixed(2) }}</text>
-						<text class="balance-tip">（预售结束后支付）</text>
+					</view>
+				</view>
+			</view>
+
+			<view class="other-item" v-for="(item, index) in presaleBalanceItems" :key="'balance-' + index">
+				<view class="method-item sku-balance-item">
+					<text class="method-label">{{ item.title }}{{ item.version ? ' / ' + item.version : '' }}</text>
+					<view class="method-value">
+						<text class="balance-amount">尾款 ¥{{ item.balanceAmount }}</text>
+						<text class="balance-tip" v-if="item.balanceTip">（{{ item.balanceTip }}）</text>
 					</view>
 				</view>
 			</view>
@@ -81,20 +91,13 @@
 					<text class="method-label">运费</text>
 					<view class="method-value">
 						<text class="shipping-fee-text">{{ shippingFeeText }}</text>
+						<button v-if="shippingQuoteError" size="mini" @click="refreshShippingQuote">重试</button>
 					</view>
 				</view>
-				<!-- 运费模板详情 -->
-				<view class="shipping-template-info" v-if="shippingTemplates.length > 0 && shippingFee > 0">
-					<view class="template-item" v-for="(template, index) in shippingTemplates" :key="index">
-						<view class="template-name">{{ template.name }}</view>
+				<view class="shipping-template-info" v-if="shippingQuote && shippingQuote.notice">
+					<view class="template-item">
 						<view class="template-detail">
-							<text class="template-type">{{ template.type == 1 ? '按件计费' : '按重量计费' }}</text>
-							<text class="template-fee">
-								{{ template.type == 1 
-									? `首${template.firstPiece}件¥${parseFloat(template.firstFee).toFixed(2)}，续${template.continuePiece}件¥${parseFloat(template.continueFee).toFixed(2)}`
-									: `首${template.firstWeight}kg¥${parseFloat(template.firstFee).toFixed(2)}，续${template.continueWeight}kg¥${parseFloat(template.continueFee).toFixed(2)}`
-								}}
-							</text>
+							<text class="template-fee">{{ shippingQuote.notice }}</text>
 						</view>
 					</view>
 				</view>
@@ -137,19 +140,23 @@
 			</view>
 		</view>
 
+            <view class="order-scroll-end"></view>
+        </scroll-view>
+
 		<!-- 底部提交栏 -->
 		<view class="bottom-bar">
 			<view class="total-info">
-				<text class="total-text" v-if="hasPresale && totalDepositAmount > 0">
+				<text class="total-text" v-if="!shippingQuote">运费：{{ shippingFeeText }}</text>
+				<text class="total-text" v-else-if="hasPresale && totalDepositAmount > 0">
 					需支付定金：<text class="total-text-val">¥{{ totalPrice }}</text>
-					<text class="presale-note">（尾款¥{{ totalBalanceAmount.toFixed(2) }}预售结束后支付）</text>
+					<text class="presale-note">（尾款¥{{ totalBalanceAmount.toFixed(2) }}）</text>
 				</text>
 				<text class="total-text" v-else>
 					合计：<text class="total-text-val">¥{{ payablePrice }}</text>
 					<text class="discount-note" v-if="snailShellsToUse > 0">已抵扣¥{{ snailShellsDiscountAmount }}</text>
 				</text>
 			</view>
-			<button class="submit-btn" @click="submitOrder">提交订单</button>
+			<button class="submit-btn" :disabled="shippingQuoteLoading" @click="submitOrder">{{ shippingQuoteLoading ? '运费计算中' : '提交订单' }}</button>
 		</view>
 	</view>
 </template>
@@ -164,11 +171,14 @@
 		data() {
 			return {
 				product: [],
-				address: [],
+				address: null,
 				remarks: '',
 				shippingFee: 0,
+				shippingQuote: null,
+				shippingQuoteLoading: false,
+				shippingQuoteError: '',
+				shippingQuoteRequestId: 0,
 				userInfo: {},
-				shippingTemplates: [] // 运费模板列表
 			}
 		},
 		onLoad(options) {
@@ -187,11 +197,22 @@
 			const selectedAddress = uni.getStorageSync('selectedAddress')
 			if (selectedAddress) {
 				this.address = selectedAddress
+				this.refreshShippingQuote()
+			} else if (this.address && this.address.id) {
+				this.refreshShippingQuote()
 			} else {
 				this.getAddressdeDault()
 			}
 		},
 		computed: {
+			presaleBalanceItems() {
+				return this.product.filter(item => item.type == 2 && Number(item.price) > Number(item.deposit || 0))
+					.map(item => ({
+						...item,
+						balanceAmount: ((Number(item.price) - Number(item.deposit || 0)) * (item.quantity || 1)).toFixed(2),
+						balanceTip: typeof item.presaleBalanceTip === 'string' ? item.presaleBalanceTip.trim() : '预售结束后支付'
+					}))
+			},
 			hasPresale() {
 				return this.product.some(item => item.type == 2)
 			},
@@ -224,10 +245,22 @@
 				return (parseFloat(productTotal) + parseFloat(this.shippingFee)).toFixed(2)
 			},
 			shippingFeeText() {
-				if (this.shippingFee <= 0) {
-					return '包邮'
+				if (this.shippingQuoteLoading) {
+					return '计算中...'
 				}
-				return '¥' + parseFloat(this.shippingFee).toFixed(2)
+				if (this.shippingQuoteError) {
+					return '计算失败'
+				}
+				if (!this.shippingQuote) {
+					return this.address && this.address.id ? '待计算' : '请选择地址'
+				}
+				if (this.shippingQuote.mode === 'collect') {
+					return this.shippingQuote.label || '顺丰到付'
+				}
+				if (this.shippingQuote.isFreeShipping) {
+					return this.shippingQuote.label || '包邮'
+				}
+				return this.shippingQuote.label || ('¥' + parseFloat(this.shippingFee).toFixed(2))
 			},
 			availableSnailShells() {
 				return Math.max(parseInt(this.userInfo.snailShells || 0), 0)
@@ -288,7 +321,7 @@
 					this.goLogin()
 				} else {
 					this.product = items
-					this.calculateShippingFee()
+					this.refreshShippingQuote()
 				}
 			},
 			async loadFromCart(cartIds, productIds) {
@@ -319,7 +352,7 @@
 						return
 					}
 					this.product = items
-					this.calculateShippingFee()
+					this.refreshShippingQuote()
 				} catch (e) {
 					uni.hideLoading()
 					uni.showToast({ title: '加载失败', icon: 'none' })
@@ -355,17 +388,17 @@
 						image: colorImage || (Array.isArray(p.image) ? p.image[0] : p.image),
 						price: selectedPrice,
 						version: versionStr,
+						presaleBalanceTip: p.variantBalanceTips && typeof p.variantBalanceTips[versionStr] === 'string'
+							? p.variantBalanceTips[versionStr] : '预售结束后支付',
 						quantity: quantity,
 						selected: true,
 						type: p.type,
 						stock: p.stock,
 						limitStock: p.limitStock || 0,
-						deposit: parseFloat(p.deposit || 0),
-						shippingTemplateId: p.shippingTemplateId,
-						shippingTemplate: p.shippingTemplate
+						deposit: Number(p.variantDeposits && Object.prototype.hasOwnProperty.call(p.variantDeposits, versionStr) ? p.variantDeposits[versionStr] : (p.deposit || 0))
 					}
 					this.product = [item]
-					this.calculateShippingFee()
+					this.refreshShippingQuote()
 				} catch (e) {
 					uni.hideLoading()
 					uni.showToast({ title: '加载失败', icon: 'none' })
@@ -373,79 +406,63 @@
 				}
 			},
 
-			// 计算运费
-			calculateShippingFee() {
-				let totalFee = 0
-				let totalQuantity = 0
-				let totalWeight = 0 // 假设每个商品重量为0.1kg，实际应该从商品信息获取
+			// 运费必须以服务端按地址计算的报价为准
+			async refreshShippingQuote() {
+				// 每次地址/商品变化都使旧报价失效，包括清空地址的情况。
+				const requestId = ++this.shippingQuoteRequestId
+				this.shippingQuote = null
+				this.shippingFee = 0
+				this.shippingQuoteError = ''
+				this.shippingQuoteLoading = false
+				if (!this.address || !this.address.id || !this.product.length) {
+					return false
+				}
 
-				// 按运费模板分组计算
-				const templateGroups = {}
-				const templateMap = {} // 用于去重运费模板
-
-				this.product.forEach(item => {
-					if (item.shippingTemplate && item.shippingTemplate.id) {
-						const templateId = item.shippingTemplate.id
-						if (!templateGroups[templateId]) {
-							templateGroups[templateId] = {
-								template: item.shippingTemplate,
-								quantity: 0,
-								weight: 0
-							}
-							// 保存模板信息用于显示
-							templateMap[templateId] = item.shippingTemplate
-						}
-						templateGroups[templateId].quantity += item.quantity || 1
-						templateGroups[templateId].weight += (item.quantity || 1) * 0.1 // 假设每个商品0.1kg
+				this.shippingQuoteLoading = true
+				this.shippingQuoteError = ''
+				try {
+					const product = this.product.map(item => ({
+						productId: item.productId,
+						version: item.version || '',
+						quantity: item.quantity || 1
+					}))
+					const response = await api.order.shippingQuote({
+						addressId: this.address.id,
+						product
+					})
+					if (requestId !== this.shippingQuoteRequestId) return false
+					if (response.code !== 200 || !response.data) {
+						throw new Error(response.msg || '运费计算失败')
 					}
-				})
-
-				// 计算每个模板的运费
-				Object.values(templateGroups).forEach(group => {
-					const template = group.template
-					let fee = 0
-
-					if (template.type == 1) {
-						// 按件计费
-						const firstPiece = parseInt(template.firstPiece) || 1
-						const firstFee = parseFloat(template.firstFee) || 0
-						const continuePiece = parseInt(template.continuePiece) || 1
-						const continueFee = parseFloat(template.continueFee) || 0
-
-						if (group.quantity <= firstPiece) {
-							fee = firstFee
-						} else {
-							const continueCount = Math.ceil((group.quantity - firstPiece) / continuePiece)
-							fee = firstFee + (continueCount * continueFee)
-						}
-					} else if (template.type == 2) {
-						// 按重量计费
-						const firstWeight = parseFloat(template.firstWeight) || 1
-						const firstFee = parseFloat(template.firstFee) || 0
-						const continueWeight = parseFloat(template.continueWeight) || 1
-						const continueFee = parseFloat(template.continueFee) || 0
-
-						if (group.weight <= firstWeight) {
-							fee = firstFee
-						} else {
-							const continueCount = Math.ceil((group.weight - firstWeight) / continueWeight)
-							fee = firstFee + (continueCount * continueFee)
-						}
+					const quote = response.data
+					const fee = Number(quote.fee)
+					if (!['number', 'string'].includes(typeof quote.fee) || String(quote.fee).trim() === '' || !Number.isFinite(fee) || fee < 0 || !['fixed', 'collect'].includes(quote.mode)) {
+						throw new Error('运费报价无效，请重新计算')
 					}
-
-					totalFee += fee
-				})
-
-				// 设置运费和模板列表
-				this.shippingFee = totalFee
-				this.shippingTemplates = Object.values(templateMap)
+					this.shippingQuote = quote
+					this.shippingFee = fee
+					return true
+				} catch (error) {
+					if (requestId !== this.shippingQuoteRequestId) return false
+					this.shippingQuote = null
+					this.shippingFee = 0
+					this.shippingQuoteError = error && error.message ? error.message : '运费计算失败'
+					return false
+				} finally {
+					if (requestId === this.shippingQuoteRequestId) {
+						this.shippingQuoteLoading = false
+					}
+				}
 			},
 
 			async getAddressdeDault() {
-				if (!this.address) {
+				if (!this.address || !this.address.id) {
 					try {
 						const response = await api.address.default()
-						this.address = response.data
+						if (response.code === 200 && response.data && (!this.address || !this.address.id)) {
+							this.address = response.data
+							this.refreshShippingQuote()
+						}
 					} catch (error) {
 						// 静默失败，用户可以选择地址
 					}
@@ -464,9 +481,17 @@
 			},
 
 			async submitOrder() {
-				if (!this.address) {
+				if (!this.address || !this.address.id) {
 					uni.showToast({
 						title: '请选择收货地址',
+						icon: 'none'
+					})
+					return
+				}
+				const quoteReady = await this.refreshShippingQuote()
+				if (!quoteReady) {
+					uni.showToast({
+						title: this.shippingQuoteError || '运费计算失败，请稍后重试',
 						icon: 'none'
 					})
 					return
@@ -487,7 +512,6 @@
 						product: productMinimal,
 						address: { id: this.address.id },
 						remarks: this.remarks,
-						shippingFee: this.shippingFee,
 						snailShells: this.snailShellsToUse,
 					}
 					const response = await api.order.create(params)
@@ -599,8 +623,21 @@
 <style scoped>
 	.create-order {
 		background-color: #f5f5f5;
-		min-height: 100vh;
+		height: 100vh;
+		box-sizing: border-box;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
 	}
+
+    .order-scroll {
+        flex: 1;
+        height: 0;
+        min-height: 0;
+        width: 100%;
+    }
+
+    .order-scroll-end { height: 24rpx; }
 
 	.address-notice {
 		padding-top: 10rpx;
@@ -804,6 +841,21 @@
 		align-items: center;
 	}
 
+	.sku-balance-item {
+		align-items: flex-start;
+		flex-direction: column;
+		gap: 12rpx;
+	}
+	.sku-balance-item .method-value {
+		flex-wrap: wrap;
+		gap: 8rpx;
+		max-width: 100%;
+	}
+	.sku-balance-item .balance-tip {
+		white-space: normal;
+		word-break: break-all;
+	}
+
 	.method-text {
 		font-size: 28rpx;
 		margin-right: 16rpx;
@@ -928,19 +980,23 @@
 	}
 
 	.bottom-bar {
-		position: fixed;
-		bottom: 0;
-		left: 0;
-		right: 0;
+		position: relative;
+		flex-shrink: 0;
+		width: 100%;
 		background-color: #ffffff;
-		height: 80rpx;
+		min-height: 140rpx;
+		box-sizing: border-box;
 		padding: 20rpx 30rpx;
+		padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+		z-index: 10;
+		gap: 20rpx;
 		display: flex;
 		align-items: center;
 	}
 
 	.total-info {
 		flex: 1;
+		min-width: 0;
 	}
 
 	.total-text {
@@ -959,7 +1015,12 @@
 		color: #ffffff;
 		border: none;
 		border-radius: 50rpx;
-		padding: 8rpx 150rpx;
+		flex: 0 0 240rpx;
+		width: 240rpx;
+		margin: 0;
+		padding: 0 20rpx;
+		line-height: 80rpx;
+		white-space: nowrap;
 		font-size: 28rpx;
 		font-weight: bold;
 	}

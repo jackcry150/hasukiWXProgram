@@ -178,7 +178,21 @@
         "navigationBarTitleText": "女性向娃衣",
         "navigationBarBackgroundColor": "#f5f5f5"
       }
-    }
+    },
+    {
+      "path": "pages/reservation/detail",
+      "style": {
+        "navigationBarTitleText": "新品预约"
+      }
+    },
+    {
+      "path": "pages/order/refund",
+      "style": {
+        "navigationBarTitleText": "订单售后",
+        "enablePullDownRefresh": true
+      }
+    },
+    {"path":"pages/supplement/detail","style":{"navigationBarTitleText":"订单补款","enableShareAppMessage":false,"enableShareTimeline":false}}
   ],
   "tabBar": {
     "custom": true,
@@ -224,4 +238,3 @@
     "backgroundColor": "#F8F8F8"
   }
 }
-

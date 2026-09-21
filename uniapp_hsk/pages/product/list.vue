@@ -1,5 +1,5 @@
 <template>
-	<view class="product-list-page">
+	<view class="analytics-page product-list-page">
 		<view class="page-glow page-glow-left"></view>
 		<view class="page-glow page-glow-right"></view>
 
@@ -64,22 +64,22 @@
 				<view
 					v-for="(product, index) in displayProducts"
 					:key="product.id || index"
-					class="product-card"
+					class="product-card analytics-product" :data-analytics-id="product.id" :data-analytics-reservation="!!product.isReservation"
 					hover-class="product-card--pressed"
 					:hover-stay-time="80"
 					@click="goToProduct(product)"
 				>
 					<view class="product-image-wrap">
 						<image class="product-image" :src="getProductImage(product)" mode="aspectFill" lazy-load></image>
-						<text class="product-tag">{{ getCategoryName(product.category_code) }}</text>
-						<view class="product-countdown" v-if="product.type == 2">限量预售</view>
+						<text class="product-tag">{{ product.isReservation ? '开售预约' : getCategoryName(product.category_code) }}</text>
+						<view class="product-countdown" v-if="!product.isReservation && product.type == 2">限量预售</view>
 					</view>
 					<view class="product-body">
 						<text class="product-name">{{ product.title || '新品系列' }}</text>
 						<text class="product-desc">{{ product.subtitle || '更多商品信息请进入详情页查看' }}</text>
 						<view class="product-meta">
 							<text class="product-price">{{ getProductPrice(product) }}</text>
-							<text class="product-detail-link">查看详情</text>
+							<text class="product-detail-link">{{ product.isReservation ? '去预约' : '查看详情' }}</text>
 						</view>
 					</view>
 				</view>
@@ -264,8 +264,8 @@ export default {
 
 		getProductPrice(product) {
 			if (!product) return '¥0.00'
-			if (product.type == 2 && Number(product.deposit) > 0) {
-				return `定金 ¥${Number(product.deposit).toFixed(2)}`
+			if (!product.isReservation && product.type == 2 && Number(product.deposit) > 0) {
+				return `定金 ¥${Number(product.deposit).toFixed(2)}${product.depositFrom ? '起' : ''}`
 			}
 			return `¥${Number(product.price || 0).toFixed(2)}`
 		},
@@ -275,7 +275,7 @@ export default {
 				uni.showToast({ title: '商品信息正在更新', icon: 'none' })
 				return
 			}
-			uni.navigateTo({ url: `/pages/product/detail?id=${product.id}` })
+			uni.navigateTo({ url: `/pages/${product.isReservation ? 'reservation' : 'product'}/detail?id=${product.id}` })
 		}
 	}
 }

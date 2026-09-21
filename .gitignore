@@ -23,3 +23,7 @@ uniapp_hsk/unpackage/
 *.bak
 *.swp
 *~
+
+# Local dependencies and OS metadata
+node_modules/
+Thumbs.db

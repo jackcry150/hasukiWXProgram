@@ -1,5 +1,5 @@
 <template>
-	<view class="home">
+	<view class="analytics-page home">
 		<view class="home-glow glow-left"></view>
 		<view class="home-glow glow-right"></view>
 
@@ -9,7 +9,6 @@
 					<image class="brand-icon" src="/static/image/logo1.png" mode="aspectFit"></image>
 					<view class="brand-copy">
 						<text class="brand-en">HASUKI</text>
-						<text class="brand-cn">ハスキ</text>
 					</view>
 				</view>
 			</view>
@@ -25,22 +24,22 @@
 					duration="500"
 				>
 					<swiper-item v-for="(banner, index) in bannerList" :key="banner.id || index" class="hero-swiper-item">
-						<image class="hero-background" :src="banner.image" mode="aspectFit" @click="handleBannerClick(banner)"></image>
+						<image data-eventsync="true" class="hero-background" :src="banner.image" mode="aspectFit" @click="handleBannerClick(banner)"></image>
 					</swiper-item>
 				</swiper>
 				<image v-else class="hero-background hero-background--single" :src="heroBannerImage" mode="aspectFit"></image>
 			</view>
 
 			<view class="quick-grid">
-				<view
+				<view :data-eventsync="item.url === '/pages/customer/customer'"
 					v-for="item in quickActions"
 					:key="item.title"
 					class="quick-card"
 					@click="goToPage(item.url)"
 				>
-					<image class="quick-icon" :src="item.icon" mode="aspectFit"></image>
-					<text class="quick-title">{{ item.title }}</text>
-					<text class="quick-desc">{{ item.desc }}</text>
+					<image :data-eventsync="item.url === '/pages/customer/customer'" class="quick-icon" :src="item.icon" mode="aspectFit"></image>
+					<text :data-eventsync="item.url === '/pages/customer/customer'" class="quick-title">{{ item.title }}</text>
+					<text :data-eventsync="item.url === '/pages/customer/customer'" class="quick-desc">{{ item.desc }}</text>
 				</view>
 			</view>
 
@@ -58,15 +57,15 @@
 				<view
 					v-for="(product, index) in displayProducts"
 					:key="product.id || index"
-					class="product-card"
-					@click="goToProductDetail(product.id)"
+					class="product-card analytics-product" :data-analytics-id="product.id" :data-analytics-reservation="!!product.isReservation"
+					@click="goToProductDetail(product.id, product.isReservation)"
 				>
 					<view class="product-image-wrap">
 						<image class="product-image" :src="getProductImage(product)" mode="aspectFill"></image>
 						<text :class="['product-tag', index % 2 === 0 ? 'product-tag-dark' : 'product-tag-light']">
 							{{ getProductTag(product, index) }}
 						</text>
-						<view class="product-countdown" v-if="product.type == 2 && product.countdown">
+						<view class="product-countdown" v-if="!product.isReservation && product.type == 2 && product.countdown">
 							剩余 {{ product.countdown }}
 						</view>
 					</view>
@@ -75,17 +74,15 @@
 						<text class="product-desc">{{ getProductDescription(product) }}</text>
 						<view class="product-meta">
 							<text class="product-price">{{ getProductPrice(product) }}</text>
-							<view class="product-heat">
-								<text class="product-heat-icon">♨</text>
-								<text>{{ getProductHeat(index) }}</text>
-							</view>
 							<view
+								v-if="!product.isReservation"
 								class="product-cart"
 								:class="{ 'product-cart--active': isProductInCart(product) }"
 								@click.stop="handleAddToCart(product)"
 							>
 								<image class="product-cart-icon" src="/static/image/icon_shop.png" mode="aspectFit"></image>
 							</view>
+							<view v-else class="product-cart product-reservation" role="button" :aria-label="homeReservationState[product.id] && homeReservationState[product.id].followed ? '取消关注' : '开售提醒'" :style="{ opacity: homeReservationBusy[product.id] ? 0.5 : 1 }" @click.stop="toggleHomeReservation(product)"><text class="reservation-heart">{{ homeReservationState[product.id] && homeReservationState[product.id].followed ? '♥' : '♡' }}</text></view>
 						</view>
 					</view>
 				</view>
@@ -101,9 +98,12 @@
 </template>
 
 <script>
+import { openCustomerService } from '@/utils/customer-service.js'
+import reservationHome from '@/utils/reservation-home.js'
 import { api } from '@/utils/request.js'
 
 export default {
+    mixins: [reservationHome],
 	data() {
 		return {
 			statusBarHeight: 44,
@@ -177,7 +177,7 @@ export default {
 	},
 
 	onLoad() {
-		const systemInfo = uni.getSystemInfoSync ? uni.getSystemInfoSync() : {}
+		const systemInfo = uni.getWindowInfo ? uni.getWindowInfo() : {}
 		this.statusBarHeight = systemInfo.statusBarHeight || 22
 		this.loadInfo()
 	},
@@ -242,6 +242,7 @@ export default {
 				const data = response && response.data ? response.data : {}
 				this.productListHot = Array.isArray(data.hot) ? data.hot : []
 				this.productListRecom = Array.isArray(data.recom) ? data.recom : []
+                this.refreshHomeReservations()
 
 				this.countdownTimers.forEach((timer) => {
 					if (timer) {
@@ -336,6 +337,7 @@ export default {
 		},
 
 		getProductTag(product, index) {
+			if (product && product.isReservation) return '开售预约'
 			if (product && product.type == 2) {
 				return '预售'
 			}
@@ -357,14 +359,10 @@ export default {
 			if (!product) {
 				return '¥0.00'
 			}
-			if (product.type == 2 && product.deposit) {
-				return `定金 ¥${product.deposit}`
+			if (!product.isReservation && product.type == 2 && product.deposit) {
+				return `定金 ¥${product.deposit}${product.depositFrom ? '起' : ''}`
 			}
 			return `¥${Number(product.price || 0).toFixed(2)}`
-		},
-
-		getProductHeat(index) {
-			return `${(2.4 + index * 0.7).toFixed(1)}k`
 		},
 
 		getDefaultVersion(product) {
@@ -453,6 +451,7 @@ export default {
 		},
 
 		async handleAddToCart(product) {
+			if (product && product.isReservation) return this.goToProductDetail(product.id, true)
 			const token = uni.getStorageSync('token')
 			if (!token) {
 				this.goLogin()
@@ -542,6 +541,10 @@ export default {
 		},
 
 		goToPage(url) {
+			if (url === '/pages/customer/customer') {
+				openCustomerService()
+				return
+			}
 			uni.navigateTo({ url })
 		},
 
@@ -557,12 +560,12 @@ export default {
 			})
 		},
 
-		goToProductDetail(id) {
+		goToProductDetail(id, isReservation = false) {
 			if (!id) {
 				return
 			}
 			uni.navigateTo({
-				url: `/pages/product/detail?id=${id}`
+				url: `/pages/${isReservation ? 'reservation' : 'product'}/detail?id=${id}`
 			})
 		}
 	}
@@ -634,19 +637,13 @@ export default {
 }
 
 .brand-en {
-	font-size: 22rpx;
+	font-size: 40rpx;
 	line-height: 1.1;
-	font-weight: 700;
+	font-weight: 800;
 	color: #141414;
 	letter-spacing: 2rpx;
 }
 
-.brand-cn {
-	font-size: 50rpx;
-	line-height: 1;
-	font-weight: 900;
-	color: #161616;
-}
 
 .hero-card {
 	position: relative;
@@ -901,19 +898,6 @@ export default {
 	font-weight: 900;
 }
 
-.product-heat {
-	display: flex;
-	align-items: center;
-	margin-left: 18rpx;
-	font-size: 24rpx;
-	color: #8b8b8b;
-}
-
-.product-heat-icon {
-	font-size: 24rpx;
-	margin-right: 6rpx;
-}
-
 .product-cart {
 	margin-left: auto;
 	width: 58rpx;
@@ -934,6 +918,8 @@ export default {
 	border-color: transparent;
 	transform: translateY(-1rpx);
 }
+
+.reservation-heart { font-size: 40rpx; line-height: 1; color: #111; }
 
 .product-cart-icon {
 	width: 30rpx;

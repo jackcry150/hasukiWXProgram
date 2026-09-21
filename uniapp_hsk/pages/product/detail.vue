@@ -1,5 +1,5 @@
 <template>
-	<view class="product-detail">
+	<view class="analytics-page product-detail">
 		<!-- 商品图片轮播 -->
 		<view class="product-images">
 			<swiper :key="selectedColor" class="swiper" indicator-dots="true" autoplay="true" interval="3000" duration="500">
@@ -7,17 +7,17 @@
 					<image :src="image" mode="widthFix" class="product-image" />
 				</swiper-item>
 			</swiper>
-			<view class="preorder-badge" v-if="product.type == 2">预定开启!</view>
+			<view class="preorder-badge" v-if="product.type == 2">{{ product.isReservation ? '新品预告' : '预定开启!' }}</view>
 		</view>
 
 		<!-- 价格信息 -->
 		<view class="price-section" v-if="product.type == 2">
 			<view class="price-info">
-				<text class="deposit-price">定金¥<text class="deposit-price-val">{{ product.deposit }}</text></text>
+				<text class="deposit-price">定金¥<text class="deposit-price-val">{{ selectedDepositText }}</text></text>
 				<text class="total-price">商品总价¥{{ selectedPriceText }}</text>
 			</view>
 			<view class="countdown" v-if="product.endTimeStamp">
-				<text class="countdown-text">预定时间剩余</text>
+				<text class="countdown-text">{{ product.isReservation ? '距离开售' : '预定时间剩余' }}</text>
 				<text class="countdown-time">{{ countdown }}</text>
 			</view>
 		</view>
@@ -133,11 +133,11 @@
 					</button>
 				</view>
 
-				<view class="action-btn" @click="goToCustomer">
-					<view class="action-icon">
-						<image class="action-icon-image" src="/static/image/icon_service2.png" mode="widthFix"></image>
+				<view data-eventsync="true" class="action-btn" @click="goToCustomer">
+					<view data-eventsync="true" class="action-icon">
+						<image data-eventsync="true" class="action-icon-image" src="/static/image/icon_service2.png" mode="widthFix"></image>
 					</view>
-					<text class="action-text">客服</text>
+					<text data-eventsync="true" class="action-text">客服</text>
 				</view>
 				<view class="action-btn" @click="goToCollect">
 					<view class="action-icon">
@@ -155,7 +155,12 @@
 				</view>
 			</view>
 			<!-- 普通商品：加入购物车 + 立即购买 -->
-			<view class="order-type-btn" v-if="product.type != 2">
+			<view class="order-type-btn" v-if="product.isReservation">
+                <view class="order-btn presale-btn" :style="{opacity: reservationBusy ? 0.6 : 1}" @tap="follow">
+                    <text>{{ reservationBusy ? '正在保存…' : reservationStatus.followed && reservationStatus.consent === 'accept' ? '♥ 已开启提醒' : reservationStatus.followed ? '♥ 开启提醒' : '♡ 开售提醒' }}</text>
+                </view>
+            </view>
+            <view class="order-type-btn" v-if="product.id && !product.isReservation && product.type != 2">
 				<view class="order-btn" style="margin-right: 10rpx;" @click="showCartPopup(1)">
 					<text>加入购物车</text>
 				</view>
@@ -164,7 +169,7 @@
 				</view>
 			</view>
 			<!-- 预售商品：立即预约 -->
-			<view class="order-type-btn" v-if="product.type == 2">
+			<view class="order-type-btn" v-if="product.id && !product.isReservation && product.type == 2">
 				<view class="order-btn presale-btn" @click="handlePresaleOrder">
 					<text>立即预约</text>
 				</view>
@@ -194,7 +199,7 @@
 					<image :src="activePreviewImage" class="goods-img" mode="aspectFit"></image>
 					<view class="goods-text">
 						<view class="goods-name">{{ product.subtitle }} {{ product.title }}</view>
-						<view class="goods-price" v-if="product.type == 2">定金：¥{{ product.deposit }} · 总价：¥{{ selectedPriceText }}</view>
+						<view class="goods-price" v-if="product.type == 2">定金：¥{{ selectedDepositText }} · 总价：¥{{ selectedPriceText }}</view>
 						<view class="goods-price" v-else>¥{{ selectedPriceText }}</view>
 					</view>
 				</view>
@@ -230,12 +235,17 @@
 </template>
 
 <script>
+import analytics from '@/utils/analytics.js'
+import { openCustomerService } from '@/utils/customer-service.js'
+import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 	import { api } from '@/utils/request.js'
 	export default {
 		name: 'ProductDetail',
 		data() {
 			return {
 				product: [],
+				shareProductId: '',
+                reservationStatus: {}, reservationBusy: false, launchTimer: null,
 				config: [],
 				countdown: '--',
 				countdownTimer: null,
@@ -271,6 +281,12 @@
 					: this.product.price
 				const parsedPrice = Number(rawPrice)
 				return Number.isFinite(parsedPrice) ? parsedPrice : 0
+			},
+			selectedDepositText() {
+				const map = this.product.variantDeposits || {}
+				const raw = Object.prototype.hasOwnProperty.call(map, this.selectedColor) ? map[this.selectedColor] : this.product.deposit
+				const amount = Number(raw || 0)
+				return Number.isFinite(amount) ? amount.toFixed(2) : '0.00'
 			},
 			selectedPriceText() {
 				return this.selectedPrice.toFixed(2)
@@ -318,13 +334,21 @@
 				return Math.min(100, Math.max(0, percentage))
 			}
 		},
+        onShow() { if(this.product.id){ this.getProductDetail(this.product.id) } },
+        onHide() { clearInterval(this.launchTimer); this.launchTimer=null },
 		onLoad(options) {
+            this.shareProductId = options.id || ''
+            // #ifdef MP-WEIXIN
+            if (typeof wx !== 'undefined' && typeof wx.showShareMenu === 'function') {
+                wx.showShareMenu({ menus: ['shareAppMessage', 'shareTimeline'] })
+            }
+            // #endif
 			if (options.id) {
 				this.getProductDetail(options.id)
 				this.getCartCount(options.id)
 				this.getConfig()
 			} else {
-				uni.redirectTo({
+				uni.switchTab({
 					url: '/pages/index/index'
 				})
 			}
@@ -347,20 +371,66 @@
 			}
 		},
 		onUnload() {
+            clearInterval(this.launchTimer);
 			// 页面卸载时清除倒计时
 			if (this.countdownTimer) {
 				clearInterval(this.countdownTimer)
 				this.countdownTimer = null
 			}
 		},
+        onShareAppMessage() {
+            const product = this.product || {}
+            const id = product.id || this.shareProductId
+            const image = Array.isArray(product.image) ? product.image[0] : product.image
+            const shareData = {
+                title: [product.title, product.subtitle].filter(Boolean).join(' ') || 'HASUKI 商品详情',
+                path: id ? '/pages/product/detail?id=' + encodeURIComponent(id) : '/pages/index/index'
+            }
+            if (image) shareData.imageUrl = image
+            return shareData
+        },
+
+        onShareTimeline() {
+            const product = this.product || {}
+            const id = product.id || this.shareProductId
+            const image = Array.isArray(product.image) ? product.image[0] : product.image
+            const shareData = {
+                title: [product.title, product.subtitle].filter(Boolean).join(' ') || 'HASUKI 商品详情',
+                query: id ? 'id=' + encodeURIComponent(id) : ''
+            }
+            if (image) shareData.imageUrl = image
+            return shareData
+        },
+
 		methods: {
+    async refreshStatus(){if(!uni.getStorageSync('token')){this.reservationStatus={};return}try{this.reservationStatus=await commerce('/reservation/status',{id:this.product.id})}catch(e){showError(e)}},
+    follow(){
+      if(!this.reservationBusy && !(this.reservationStatus.followed && this.reservationStatus.consent==='accept'))analytics.reservationClick(this.product.id)
+      if(this.reservationBusy || !requireLogin())return
+      if(this.reservationStatus.followed && this.reservationStatus.consent==='accept'){uni.showModal({title:'开售提醒',content:'是否取消关注和开售提醒？',success:r=>{if(r.confirm)this.unfollow()}});return}
+      this.reservationBusy=true
+      const save=async(consent)=>{try{this.reservationStatus=await commerce('/reservation/follow',{id:this.product.id,followed:true,consent,template_id:this.product.template_id},'POST');uni.showToast({title:consent==='accept'?'已开启开售提醒':'已关注，尚未开启通知',icon:'none'})}catch(e){showError(e)}finally{this.reservationBusy=false}}
+      // Call directly from the user tap; do not await a network request before WeChat authorization.
+      // #ifdef MP-WEIXIN
+      if(this.product.template_id){wx.requestSubscribeMessage({tmplIds:[this.product.template_id],success:r=>save(['accept','reject','ban'].includes(r[this.product.template_id])?r[this.product.template_id]:'unknown'),fail:()=>save('unknown')});return}
+      // #endif
+      save('unknown')
+    },
+    async unfollow(){if(this.reservationBusy||!requireLogin())return;this.reservationBusy=true;try{this.reservationStatus=await commerce('/reservation/follow',{id:this.product.id,followed:false},'POST')}catch(e){showError(e)}finally{this.reservationBusy=false}},
+
 			async getProductDetail(id) {
 				try {
 					const params = {
-						id: id
+						id: id, reservation: 1
 					}
 					const response = await api.product.detail(params)
-					this.product = response.data
+					if (response.code !== 200 || !response.data) throw new Error(response.msg || '商品不可用')
+                    this.product = response.data
+                    clearInterval(this.launchTimer)
+                    if(this.product.isReservation){
+                        this.refreshStatus()
+                        this.launchTimer=setInterval(()=>{if(Date.now()>=this.product.startTimeStamp*1000){clearInterval(this.launchTimer);this.getProductDetail(id)}},1000)
+                    }
 					this.product.version = Array.isArray(this.product.version)
 						? this.product.version.filter(item => String(item || '').trim())
 						: String(this.product.version || '').split(',').map(item => item.trim()).filter(Boolean)
@@ -393,7 +463,7 @@
 					}
 
 					// 结束时间戳（秒）
-					const endTime = this.product.endTimeStamp
+					const endTime = this.product.isReservation ? this.product.startTimeStamp : this.product.endTimeStamp
 					// 当前时间戳（秒）
 					const now = Math.floor(Date.now() / 1000)
 					// 剩余时间（秒）
@@ -440,22 +510,6 @@
 				}
 			},
 
-			onShareAppMessage() {
-				return {
-					title: this.product.title + ' ' + this.product.subtitle,
-					path: '/pages/product/detail?id=' + this.product.id,
-					imageUrl: this.product.image[0]
-				}
-			},
-
-			onShareTimeline() {
-				return {
-					title: this.product.title + ' ' + this.product.subtitle,
-					query: 'id=' + this.product.id,
-					imageUrl: this.product.image[0]
-				}
-			},
-
 			async getCartCount(id) {
 				const token = uni.getStorageSync('token')
 				if (token) {
@@ -488,9 +542,7 @@
 
 			goToCustomer() {
 				const productId = this.product && this.product.id ? this.product.id : ''
-				uni.navigateTo({
-					url: '/pages/customer/customer'
-				})
+				openCustomerService()
 			},
 
 			async goToCollect() {

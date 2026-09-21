@@ -106,6 +106,12 @@
 						throw new Error(response?.msg || '登录失败')
 					}
 					uni.setStorageSync('token', response.data.token)
+                    const commerceReturn = uni.getStorageSync('commerceReturnPath')
+                    if (typeof commerceReturn === 'string' && /^\/pages\/(reservation|group|product|supplement)\/(detail|list)(\?|$)/.test(commerceReturn)) {
+                        uni.removeStorageSync('commerceReturnPath')
+                        uni.redirectTo({ url: commerceReturn })
+                        return
+                    }
 					uni.showToast({
 						title: '登录成功',
 						icon: 'success'

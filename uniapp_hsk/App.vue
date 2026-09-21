@@ -1,12 +1,15 @@
 <script>
+import analytics from './utils/analytics.js'
 	export default {
 		onLaunch: function() {
 			console.log('App Launch')
 		},
-		onShow: function() {
+		onShow: function(options) {
+            analytics.show(options)
 			console.log('App Show')
 		},
 		onHide: function() {
+            analytics.hide()
 			console.log('App Hide')
 		}
 	}

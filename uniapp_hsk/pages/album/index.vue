@@ -389,7 +389,7 @@
 
 	.album-card__media {
 		position: relative;
-		height: 430rpx;
+		height: 340rpx;
 		background: linear-gradient(180deg, #ececec 0%, #dcdcdc 100%);
 	}
 
@@ -616,5 +616,11 @@
 		font-size: 24rpx;
 		line-height: 1.6;
 		color: #7a7a7a;
+	}
+
+	@media (max-width: 360px) {
+		.album-card__media {
+			height: 320rpx;
+		}
 	}
 </style>

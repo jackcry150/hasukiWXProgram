@@ -6,7 +6,6 @@
 					<image class="brand-logo" src="/static/image/default_avatar.jpg" mode="aspectFit"></image>
 					<view class="brand-copy">
 						<text class="brand-en">HASUKI</text>
-						<text class="brand-cn">ハスキ</text>
 					</view>
 				</view>
 			</view>
@@ -67,15 +66,15 @@
 					</view>
 				</view>
 				<view class="question-grid">
-					<view
+					<view data-eventsync="true"
 						v-for="(item, index) in quickCards"
 						:key="'quick-' + index"
 						class="question-card"
 						@click="handleQuickCard(item)"
 					>
-						<image class="question-icon" :src="item.icon" mode="aspectFit"></image>
-						<text class="question-label">{{ item.label }}</text>
-						<text class="question-arrow">›</text>
+						<image data-eventsync="true" class="question-icon" :src="item.icon" mode="aspectFit"></image>
+						<text data-eventsync="true" class="question-label">{{ item.label }}</text>
+						<text data-eventsync="true" class="question-arrow">›</text>
 					</view>
 				</view>
 			</view>
@@ -118,6 +117,7 @@
 </template>
 
 <script>
+import { openCustomerService } from '@/utils/customer-service.js'
 import { api } from '@/utils/request.js'
 
 const QUICK_QUESTIONS = {
@@ -260,7 +260,7 @@ export default {
 			uni.navigateTo({ url: '/pages/order/list' })
 		},
 		goToManualCustomer() {
-			uni.navigateTo({ url: '/pages/customer/customer' })
+			openCustomerService()
 		}
 	}
 }
@@ -301,15 +301,9 @@ export default {
 		flex-direction: column;
 	}
 	.brand-en {
-		font-size: 24rpx;
-		font-weight: 800;
-		letter-spacing: 6rpx;
-		line-height: 1.1;
-	}
-	.brand-cn {
-		margin-top: 8rpx;
 		font-size: 40rpx;
 		font-weight: 800;
+		letter-spacing: 2rpx;
 		line-height: 1.1;
 	}
 	.hero-card {

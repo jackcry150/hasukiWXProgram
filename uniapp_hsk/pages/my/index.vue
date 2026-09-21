@@ -8,7 +8,6 @@
 					</view>
 					<view class="brand-copy">
 						<text class="brand-en">HASUKI</text>
-						<text class="brand-cn">ハスキ</text>
 					</view>
 				</view>
 			</view>
@@ -41,14 +40,14 @@
 				</view>
 			</view>
 
-			<view class="welfare-banner" @click="goToGroup">
+			<view class="welfare-banner" @click="goToCustomer">
 				<image class="banner-bg-image" src="/static/image/my-welfare-banner-bg.png" mode="scaleToFill" />
 				<view class="banner-copy">
-					<text class="banner-title">添加官方企微</text>
-					<text class="banner-desc">获取新品提醒与专属优惠</text>
+					<text class="banner-title">官方客服</text>
+					<text class="banner-desc">商品咨询与订单售后</text>
 				</view>
 				<view class="banner-btn">
-					<text>立即添加</text>
+					<text>联系客服</text>
 					<text class="banner-btn-arrow">›</text>
 				</view>
 			</view>
@@ -114,12 +113,12 @@
 						</view>
 						<text class="chevron">›</text>
 					</view>
-					<view class="function-item" @click="goToCustomer()">
-						<view class="function-main">
-							<view class="function-icon"><image class="nav-item-image" src="/static/image/icon_service.png" mode="aspectFit"></image></view>
-							<text class="function-text">联系客服</text>
+					<view data-eventsync="true" class="function-item" @click="goToCustomer()">
+						<view data-eventsync="true" class="function-main">
+							<view data-eventsync="true" class="function-icon"><image data-eventsync="true" class="nav-item-image" src="/static/image/icon_service.png" mode="aspectFit"></image></view>
+							<text data-eventsync="true" class="function-text">联系客服</text>
 						</view>
-						<text class="chevron">›</text>
+						<text data-eventsync="true" class="chevron">›</text>
 					</view>
 					<view class="function-item" @click="goToAfterSales()">
 						<view class="function-main">
@@ -142,9 +141,9 @@
 </template>
 
 <script>
+import { openCustomerService } from '@/utils/customer-service.js'
 	import { api } from '@/utils/request.js'
-	const ARRIVAL_SUBSCRIBE_TEMPLATE_ID = 'PSTyqbj2wf1P74dSDb1qfh0ErUGegNQ8DFS6-SKM4_M'
-	const ARRIVAL_SUBSCRIBE_ASKED_KEY = 'arrival_subscribe_asked_v1'
+	import { askArrivalSubscribe } from '@/utils/arrival-subscribe.js'
 	export default {
 		name: 'Profile',
 	data() {
@@ -181,47 +180,7 @@
 		methods: {
 			tryAskArrivalSubscribe() {
 				// #ifdef MP-WEIXIN
-				const token = uni.getStorageSync('token')
-				if (!token) {
-					return
-				}
-				if (!ARRIVAL_SUBSCRIBE_TEMPLATE_ID || ARRIVAL_SUBSCRIBE_TEMPLATE_ID === 'REPLACE_WITH_TEMPLATE_ID') {
-					return
-				}
-				const asked = uni.getStorageSync(ARRIVAL_SUBSCRIBE_ASKED_KEY)
-				if (asked) {
-					return
-				}
-				uni.showModal({
-					title: '到货通知',
-					content: '是否开启到货后通知？',
-					confirmText: '开启',
-					cancelText: '稍后',
-					success: (res) => {
-						if (!res.confirm) {
-							uni.showToast({
-							title: '未开启通知，到货后请在我的订单手动查看',
-								icon: 'none'
-							})
-							return
-						}
-						wx.requestSubscribeMessage({
-							tmplIds: [ARRIVAL_SUBSCRIBE_TEMPLATE_ID],
-							success: (ret) => {
-								const accepted = ret[ARRIVAL_SUBSCRIBE_TEMPLATE_ID] === 'accept'
-								if (accepted) {
-									uni.showToast({ title: '已开启通知', icon: 'none' })
-								} else {
-									uni.showToast({ title: '未开启通知，到货后请在我的订单手动查看', icon: 'none' })
-								}
-								uni.setStorageSync(ARRIVAL_SUBSCRIBE_ASKED_KEY, 1)
-							},
-							fail: () => {
-								uni.showToast({ title: '订阅调用失败', icon: 'none' })
-							}
-						})
-					}
-				})
+				askArrivalSubscribe(this.userInfo.id, () => api.setting.info({}, { silent: true }))
 				// #endif
 			},
 
@@ -336,9 +295,7 @@
 			},
 
 			goToCustomer() {
-				uni.navigateTo({
-					url: '/pages/customer/customer'
-				})
+				openCustomerService()
 			},
 
 			goToAfterSales() {
@@ -407,20 +364,13 @@
 	}
 
 	.brand-en {
-		font-size: 22rpx;
+		font-size: 40rpx;
 		line-height: 1.1;
 		font-weight: 800;
 		color: #151515;
-		letter-spacing: 1rpx;
+		letter-spacing: 2rpx;
 	}
 
-	.brand-cn {
-		margin-top: 4rpx;
-		font-size: 40rpx;
-		line-height: 1.05;
-		font-weight: 900;
-		color: #141414;
-	}
 
 	.profile-card {
 		position: relative;

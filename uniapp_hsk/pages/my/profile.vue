@@ -93,7 +93,7 @@
 			},
 		},
 		onLoad() {
-			const systemInfo = uni.getSystemInfoSync ? uni.getSystemInfoSync() : {}
+			const systemInfo = uni.getWindowInfo ? uni.getWindowInfo() : {}
 			this.statusBarHeight = systemInfo.statusBarHeight || 22
 			this.getProfileInfo()
 		},

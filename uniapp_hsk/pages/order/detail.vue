@@ -185,7 +185,9 @@
 
 		<!-- 底部操作栏 -->
 		<view class="bottom-bar" v-if="!loading && order.id">
-			<button class="btn btn-secondary" @click="goToAiCustomer">联系客服</button>
+			<button data-eventsync="true" class="btn btn-secondary" @click="goToAiCustomer">联系客服</button>
+			<button class="btn btn-secondary" v-if="order.hasPendingPayment" @click="handlePaymentSync">核对支付状态</button>
+			<button class="btn btn-secondary" v-if="showRefundBtn" @click="handleRefund">{{ order.hasAftersale ? '查看售后' : '申请售后' }}</button>
 			<button class="btn btn-secondary" v-if="showCancelBtn" @click="handleCancel">取消订单</button>
 			<button class="btn btn-secondary" v-if="showDeleteBtn" @click="handleDelete">删除订单</button>
 			<button class="btn btn-primary" v-if="order.isPresale && order.canPayDeposit" @click="handlePayDeposit">
@@ -201,7 +203,8 @@
 </template>
 
 <script>
-	import { api } from '@/utils/request'
+import { openCustomerService } from '@/utils/customer-service.js'
+	import request, { api } from '@/utils/request'
 
 	const STATUS_COLORS = {
 		'待支付': 'linear-gradient(135deg, #111111, #2f2f2f)',
@@ -232,6 +235,7 @@
 			return {
 				orderId: '',
 				loading: true,
+				paymentSyncing: false,
 				order: {},
 				balanceCountdown: '',
 				countdownTimer: null
@@ -272,14 +276,15 @@
 				return !this.order.isPresale && (s === 1 || s === 8)
 			},
 			showCancelBtn() {
+				if (this.order.hasPendingPayment) return false
 				const s = this.order.status
 				return (s === 1 || s === 8) || (this.order.isPresale && this.order.canPayDeposit)
 			},
 			showRefundBtn() {
-				return false // 支付成功后不显示申请退款
+				return !!this.order.aftersaleEnabled && ((this.order.aftersaleTypes || []).length > 0 || this.order.hasAftersale)
 			},
 			showConfirmReceiptBtn() {
-				return this.order.status === 6
+				return this.order.status === 6 && Number(this.order.refundStatus) !== 1
 			},
 			showDeleteBtn() {
 				return this.order.status === 4
@@ -290,6 +295,9 @@
 				this.orderId = options.id
 				this.loadOrderDetail(options.id)
 			}
+		},
+		onShow() {
+			if (this.orderId && !this.loading) this.loadOrderDetail(this.orderId)
 		},
 		onPullDownRefresh() {
 			this.loadOrderDetail(this.orderId).finally(() => {
@@ -374,9 +382,7 @@
 			},
 			goToAiCustomer() {
 				const orderId = this.order && this.order.id ? this.order.id : this.orderId
-				uni.navigateTo({
-					url: '/pages/customer/customer'
-				})
+				openCustomerService()
 			},
 			goProduct(id) {
 				if (!id) return
@@ -495,7 +501,19 @@
 					}
 				})
 			},
-			handleRefund() {
+			async handlePaymentSync() {
+                if (this.paymentSyncing) return
+                this.paymentSyncing = true
+                uni.showLoading({ title: '核对中…' })
+                try {
+                    const result = await request.post('/aftersale/paymentSync', { id: this.order.id })
+                    if (result.code !== 200) throw new Error(result.msg || '暂未核对成功')
+                    await this.loadOrderDetail(this.orderId)
+                    if (this.order.hasPendingPayment) uni.showToast({ title: '支付结果仍待确认，请稍后重试', icon: 'none' })
+                } catch (e) { uni.showToast({ title: e.message || '核对失败，请稍后重试', icon: 'none' }) }
+                finally { this.paymentSyncing = false; uni.hideLoading() }
+            },
+            handleRefund() {
 				uni.navigateTo({ url: `/pages/order/refund?id=${this.order.id}` })
 			},
 			async handleDelete() {

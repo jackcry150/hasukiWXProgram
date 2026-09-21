@@ -8,7 +8,6 @@
 					</view>
 					<view class="brand-copy">
 						<text class="brand-en">HASUKI</text>
-						<text class="brand-cn">ハスキ</text>
 					</view>
 				</view>
 			</view>
@@ -60,7 +59,7 @@ export default {
 	},
 
 	onLoad() {
-		const systemInfo = uni.getSystemInfoSync ? uni.getSystemInfoSync() : {}
+		const systemInfo = uni.getWindowInfo ? uni.getWindowInfo() : {}
 		this.statusBarHeight = systemInfo.statusBarHeight || 22
 	},
 
@@ -130,20 +129,13 @@ export default {
 	}
 
 	.brand-en {
-		font-size: 22rpx;
+		font-size: 40rpx;
 		line-height: 1.1;
 		font-weight: 800;
 		color: #151515;
-		letter-spacing: 1rpx;
+		letter-spacing: 2rpx;
 	}
 
-	.brand-cn {
-		margin-top: 4rpx;
-		font-size: 40rpx;
-		line-height: 1.05;
-		font-weight: 900;
-		color: #141414;
-	}
 
 	.verify-card,
 	.group-card {

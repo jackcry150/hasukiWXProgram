@@ -49,12 +49,12 @@ class Request {
 	}
 
 	// 响应拦截器
-	responseInterceptor(response) {
+	responseInterceptor(response, options = {}) {
 		const { statusCode, data } = response
 
 		// HTTP状态码检查
 		if (statusCode !== 200) {
-			uni.showToast({
+			if (!options.silent) uni.showToast({
 				title: '网络请求失败',
 				icon: 'none'
 			})
@@ -104,14 +104,14 @@ class Request {
 				...config,
 				success: (response) => {
 					try {
-						const result = this.responseInterceptor(response)
+						const result = this.responseInterceptor(response, options)
 						resolve(result)
 					} catch (error) {
 						reject(error)
 					}
 				},
 				fail: (error) => {
-					uni.showToast({
+					if (!options.silent) uni.showToast({
 						title: '网络连接失败',
 						icon: 'none'
 					})
@@ -160,7 +160,7 @@ export const api = {
 	// 网站设置
 	setting: {
 		//网站设置
-		info: (params) => request.get('/setting/info', params),
+		info: (params, options = {}) => request.get('/setting/info', params, options),
 	},
 	// 资讯相关
 	news: {
@@ -231,6 +231,8 @@ export const api = {
 	order: {
 		// 创建订单
 		create: (params) => request.post('/order/create', params),
+		// 根据收货地址获取后台运费规则报价
+		shippingQuote: (params) => request.post('/order/shippingQuote', params),
 		// 获取订单列表
 		list: (params) => request.get('/order/list', params),
 		// 获取订单详情

@@ -2,6 +2,9 @@
 	<view class="page">
 		<scroll-view scroll-y class="content">
 			<text class="text">{{ content }}</text>
+            <text class="text">
+运营统计说明：为改进浏览、预约和购物体验，我们记录随机访客标识、访问页面、可见停留时长、商品操作、入口渠道及必要的错误分类，并与预约和订单结果关联。统计事件不包含姓名、手机号、收货地址、聊天内容或支付凭证。
+</text>
 		</scroll-view>
 	</view>
 </template>
