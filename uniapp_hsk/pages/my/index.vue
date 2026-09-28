@@ -15,7 +15,7 @@
 			<view class="profile-card" @click="goToProfile()">
 				<image class="card-bg-image" src="/static/image/my-profile-card-bg.png" mode="scaleToFill" />
 				<view class="profile-top">
-					<image class="avatar" :src="userInfo.avatar || '/static/image/default_avatar.jpg'" mode="aspectFill" />
+					<image class="avatar" :src="userInfo.avatar || '/static/image/hasuki_avatar_20260922.jpg'" mode="aspectFill" />
 					<view class="profile-info">
 						<view class="user-headline">
 							<view class="user-copy">
@@ -152,7 +152,7 @@ import { openCustomerService } from '@/utils/customer-service.js'
 			userInfo: {
 					nickName: '',
 					id: '',
-					avatar: '/static/image/default_avatar.jpg',
+					avatar: '/static/image/hasuki_avatar_20260922.jpg',
 					snailShells: 0
 			},
 			cartCount: 0,

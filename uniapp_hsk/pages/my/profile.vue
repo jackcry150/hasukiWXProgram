@@ -7,7 +7,7 @@
 			<view class="profile-avatar-section">
 				<button class="avatar-btn" open-type="chooseAvatar" @chooseavatar="onChooseAvatar">
 					<image
-						:src="(userInfo && userInfo.avatar) ? userInfo.avatar : '/static/image/default_avatar.jpg'"
+						:src="(userInfo && userInfo.avatar) ? userInfo.avatar : '/static/image/hasuki_avatar_20260922.jpg'"
 						class="avatar-image"
 						mode="aspectFill"
 					></image>
@@ -71,7 +71,7 @@
 				userInfo: {
 					nickName: '',
 					id: '',
-					avatar: '/static/image/default_avatar.jpg',
+					avatar: '/static/image/hasuki_avatar_20260922.jpg',
 					gender: '',
 					birthday: '',
 					province: '',
@@ -121,7 +121,7 @@
 						this.userInfo = {
 							nickName: profile.nickName || '',
 							id: profile.id || '',
-							avatar: profile.avatar || '/static/image/default_avatar.jpg',
+							avatar: profile.avatar || '/static/image/hasuki_avatar_20260922.jpg',
 							gender: profile.gender || '',
 							birthday: profile.birthday || '',
 							province: profile.province || '',

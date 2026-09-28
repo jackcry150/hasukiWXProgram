@@ -1,37 +1,41 @@
 <template>
 	<view class="analytics-page product-list-page">
-		<view class="page-glow page-glow-left"></view>
-		<view class="page-glow page-glow-right"></view>
+		<view class="page-decoration">
+			<view class="page-glow page-glow-left"></view>
+			<view class="page-glow page-glow-right"></view>
+		</view>
 
 		<view class="page-shell">
-			<view class="catalog-head">
-				<view class="catalog-copy">
-					<text class="catalog-brand">HASUKI COLLECTION</text>
-					<text class="catalog-title">{{ activeCategory.title }}</text>
-					<text class="catalog-desc">{{ activeCategory.description }}</text>
-				</view>
-				<text class="catalog-count">{{ catalogSummary }}</text>
-			</view>
-
-			<scroll-view
-				class="category-scroll"
-				scroll-x
-				:show-scrollbar="false"
-				aria-label="商品分类"
-			>
-				<view class="category-tabs">
-					<view
-						v-for="category in categoryOptions"
-						:key="category.code || 'all'"
-						:class="['category-tab', { 'category-tab--active': activeCategoryCode === category.code }]"
-						hover-class="category-tab--pressed"
-						:hover-stay-time="80"
-						@click="changeCategory(category.code)"
-					>
-						{{ category.label }}
+			<view class="catalog-sticky">
+				<view class="catalog-head">
+					<view class="catalog-copy">
+						<text class="catalog-brand">HASUKI COLLECTION</text>
+						<text class="catalog-title">{{ activeCategory.title }}</text>
+						<text class="catalog-desc">{{ activeCategory.description }}</text>
 					</view>
+					<text class="catalog-count">{{ catalogSummary }}</text>
 				</view>
-			</scroll-view>
+
+				<scroll-view
+					class="category-scroll"
+					scroll-x
+					:show-scrollbar="false"
+					aria-label="商品分类"
+				>
+					<view class="category-tabs">
+						<view
+							v-for="category in categoryOptions"
+							:key="category.code || 'all'"
+							:class="['category-tab', { 'category-tab--active': activeCategoryCode === category.code }]"
+							hover-class="category-tab--pressed"
+							:hover-stay-time="80"
+							@click="changeCategory(category.code)"
+						>
+							{{ category.label }}
+						</view>
+					</view>
+				</scroll-view>
+			</view>
 
 			<view v-if="loading" class="product-grid" aria-label="商品加载中">
 				<view v-for="item in skeletonItems" :key="item" class="product-card product-card--skeleton">
@@ -285,13 +289,14 @@ export default {
 .product-list-page {
 	position: relative;
 	min-height: 100vh;
-	overflow: hidden;
 	background:
 		radial-gradient(circle at top left, rgba(255, 255, 255, 0.5), transparent 28%),
 		radial-gradient(circle at top right, rgba(210, 210, 210, 0.34), transparent 24%),
 		linear-gradient(180deg, #f1f1f1 0%, #f7f7f7 34%, #ffffff 100%);
 	color: #141414;
 }
+
+.page-decoration { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 
 .page-glow {
 	position: absolute;
@@ -303,7 +308,16 @@ export default {
 
 .page-glow-left { width: 240rpx; height: 240rpx; top: 40rpx; left: -80rpx; background: rgba(255, 255, 255, 0.56); }
 .page-glow-right { width: 220rpx; height: 220rpx; top: 220rpx; right: -70rpx; background: rgba(190, 190, 190, 0.38); }
-.page-shell { position: relative; z-index: 1; padding: 28rpx 24rpx calc(48rpx + env(safe-area-inset-bottom)); }
+.page-shell { position: relative; z-index: 1; padding: 12rpx 24rpx calc(48rpx + env(safe-area-inset-bottom)); }
+
+.catalog-sticky {
+	position: sticky;
+	top: 0;
+	z-index: 10;
+	margin: 0 -24rpx;
+	padding: 16rpx 24rpx 1rpx;
+	background: #f1f1f1;
+}
 
 .catalog-head {
 	display: flex;

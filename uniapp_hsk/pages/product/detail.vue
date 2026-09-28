@@ -114,6 +114,18 @@
 
 		<view class="content">
 			<view class="contentDe" v-if="contentTab == 1">
+                <view v-if="product.video" class="product-video-block">
+                    <video id="productDetailVideo" :key="product.video" :src="product.video"
+                        class="product-detail-video" :controls="true" :autoplay="false"
+                        object-fit="contain" :show-center-play-btn="true" @play="pauseProductVideo('productDetailVideo')" @error="onProductVideoError(1)" />
+                    <text v-if="videoError" class="product-video-error">视频暂时无法播放，请稍后重试</text>
+                </view>
+                <view v-if="product.video2" class="product-video-block">
+                    <video id="productDetailVideo2" :key="product.video2" :src="product.video2"
+                        class="product-detail-video" :controls="true" :autoplay="false"
+                        object-fit="contain" :show-center-play-btn="true" @play="pauseProductVideo('productDetailVideo2')" @error="onProductVideoError(2)" />
+                    <text v-if="videoError2" class="product-video-error">视频暂时无法播放，请稍后重试</text>
+                </view>
 				<image v-for="(image, index) in product.content" :key="index" :src="image" class="c-img" mode="widthFix"></image>
 			</view>
 			<view class="contentDe" v-if="contentTab == 2">
@@ -255,7 +267,9 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 				currentVersion: 0,
 				quantity: 1,
 				orderType: 1,
-				cartNumbers: 0,
+				videoError: false,
+                videoError2: false,
+                cartNumbers: 0,
 				productCollect: 0,
 				specExpanded: {
 					proportion: false,
@@ -335,7 +349,7 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 			}
 		},
         onShow() { if(this.product.id){ this.getProductDetail(this.product.id) } },
-        onHide() { clearInterval(this.launchTimer); this.launchTimer=null },
+        onHide() { this.pauseProductVideo(); clearInterval(this.launchTimer); this.launchTimer=null },
 		onLoad(options) {
             this.shareProductId = options.id || ''
             // #ifdef MP-WEIXIN
@@ -371,6 +385,7 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 			}
 		},
 		onUnload() {
+            this.pauseProductVideo();
             clearInterval(this.launchTimer);
 			// 页面卸载时清除倒计时
 			if (this.countdownTimer) {
@@ -403,6 +418,16 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
         },
 
 		methods: {
+            pauseProductVideo(exceptId = '') {
+                if (this.contentTab != 1) return
+                ;[['video', 'productDetailVideo'], ['video2', 'productDetailVideo2']].forEach(([field, id]) => {
+                    if (this.product[field] && id !== exceptId) uni.createVideoContext(id, this).pause()
+                })
+            },
+            onProductVideoError(slot) {
+                if (slot === 2) this.videoError2 = true
+                else this.videoError = true
+            },
     async refreshStatus(){if(!uni.getStorageSync('token')){this.reservationStatus={};return}try{this.reservationStatus=await commerce('/reservation/status',{id:this.product.id})}catch(e){showError(e)}},
     follow(){
       if(!this.reservationBusy && !(this.reservationStatus.followed && this.reservationStatus.consent==='accept'))analytics.reservationClick(this.product.id)
@@ -425,6 +450,8 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 					}
 					const response = await api.product.detail(params)
 					if (response.code !== 200 || !response.data) throw new Error(response.msg || '商品不可用')
+                    this.videoError = false
+                    this.videoError2 = false
                     this.product = response.data
                     clearInterval(this.launchTimer)
                     if(this.product.isReservation){
@@ -812,6 +839,9 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 </script>
 
 <style scoped>
+.product-video-block { width: 100%; margin-bottom: 20rpx; }
+.product-detail-video { display: block; width: 100%; height: 422rpx; background: #000; }
+.product-video-error { display: block; padding: 20rpx; color: #666; font-size: 24rpx; }
 	.product-detail {
 		background-color: #ffffff;
 		height: 100vh;

@@ -6,9 +6,8 @@
 		<view class="page-shell" :style="{ paddingTop: `${statusBarHeight + 12}px` }">
 			<view class="topbar">
 				<view class="brand-block">
-					<image class="brand-icon" src="/static/image/logo1.png" mode="aspectFit"></image>
-					<view class="brand-copy">
-						<text class="brand-en">HASUKI</text>
+					<view class="brand-logo">
+						<image class="brand-lockup" src="/static/image/hasuki-brand-722afb9d.png" mode="aspectFit" role="img" aria-label="HASUKI"></image>
 					</view>
 				</view>
 			</view>
@@ -611,6 +610,10 @@ export default {
 	position: relative;
 	z-index: 1;
 	padding: 0 24rpx 44rpx;
+	/* Reserve the fixed 50px tab bar, safe area, and existing content gap. */
+	padding-bottom: calc(50px + 44rpx);
+	padding-bottom: calc(50px + 44rpx + constant(safe-area-inset-bottom));
+	padding-bottom: calc(50px + 44rpx + env(safe-area-inset-bottom));
 }
 
 .topbar {
@@ -623,25 +626,22 @@ export default {
 .brand-block {
 	display: flex;
 	align-items: center;
-}
-
-.brand-icon {
-	width: 76rpx;
 	height: 76rpx;
-	margin-right: 16rpx;
 }
 
-.brand-copy {
-	display: flex;
-	flex-direction: column;
+.brand-logo {
+	position: relative;
+	width: 278.88rpx;
+	height: 53.76rpx;
+	overflow: visible;
 }
 
-.brand-en {
-	font-size: 40rpx;
-	line-height: 1.1;
-	font-weight: 800;
-	color: #141414;
-	letter-spacing: 2rpx;
+.brand-lockup {
+	position: absolute;
+	width: 318.87rpx;
+	height: 73.11rpx;
+	left: -16.22rpx;
+	top: -8.58rpx;
 }
 
 
@@ -797,37 +797,44 @@ export default {
 .product-grid {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 20rpx;
+	gap: 24rpx 20rpx;
+	align-items: stretch;
 }
 
 .product-card {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
 	overflow: hidden;
-	border-radius: 30rpx;
-	background: rgba(255, 255, 255, 0.92);
-	box-shadow: 0 18rpx 46rpx rgba(0, 0, 0, 0.09);
+	border-radius: 20rpx;
+	background: #ffffff;
+	box-shadow: 0 6rpx 22rpx rgba(0, 0, 0, 0.055);
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
 
 .product-image-wrap {
 	position: relative;
 	height: 340rpx;
-	background: linear-gradient(180deg, #efefef 0%, #dcdcdc 100%);
+	flex-shrink: 0;
+	background: #f2f2f2;
 }
 
 .product-image {
+	display: block;
 	width: 100%;
 	height: 100%;
 }
 
 .product-tag {
 	position: absolute;
-	left: 16rpx;
-	top: 16rpx;
-	padding: 8rpx 16rpx;
-	border-radius: 14rpx;
+	left: 14rpx;
+	top: 14rpx;
+	padding: 7rpx 12rpx;
+	border-radius: 8rpx;
 	font-size: 24rpx;
-	line-height: 1;
+	line-height: 1.4;
 	color: #ffffff;
-	font-weight: 800;
+	font-weight: 600;
 }
 
 .product-tag-dark {
@@ -865,49 +872,71 @@ export default {
 }
 
 .product-body {
-	padding: 22rpx 20rpx 22rpx;
+	box-sizing: border-box;
+	height: 252rpx;
+	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	padding: 20rpx;
 }
 
 .product-name {
-	display: block;
-	font-size: 36rpx;
-	line-height: 1.25;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	height: 87rpx;
+	flex-shrink: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	word-break: break-all;
+	font-size: 30rpx;
+	line-height: 1.45;
 	color: #171717;
-	font-weight: 800;
-	margin-bottom: 10rpx;
+	font-weight: 600;
+	margin-bottom: 8rpx;
 }
 
 .product-desc {
 	display: block;
-	font-size: 26rpx;
-	line-height: 1.3;
+	height: 42rpx;
+	flex-shrink: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	font-size: 28rpx;
+	line-height: 1.5;
+	font-weight: 400;
 	color: #666666;
-	margin-bottom: 20rpx;
-	min-height: 68rpx;
 }
 
 .product-meta {
 	display: flex;
 	align-items: center;
+	gap: 8rpx;
+	min-height: 64rpx;
+	margin-top: auto;
 }
 
 .product-price {
-	font-size: 28rpx;
-	line-height: 1;
+	min-width: 0;
+	font-size: 32rpx;
+	line-height: 1.25;
 	color: #111111;
-	font-weight: 900;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
 }
 
 .product-cart {
 	margin-left: auto;
-	width: 58rpx;
-	height: 58rpx;
+	width: 64rpx;
+	height: 64rpx;
+	flex-shrink: 0;
 	border-radius: 50%;
 	background: #f1f1f1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border: 2rpx solid rgba(17, 17, 17, 0.08);
+	border: 1rpx solid #e8e8e8;
 	box-sizing: border-box;
 	transition: background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
