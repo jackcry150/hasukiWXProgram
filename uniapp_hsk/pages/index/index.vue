@@ -355,10 +355,12 @@ export default {
 		},
 
 		getProductPrice(product) {
+			if (product && product.isReservation) return '待公布'
+			if (product && product.type == 2 && !(Number(product.deposit) > 0) && !(Number(product.price) > 0)) return '待公布'
 			if (!product) {
 				return '¥0.00'
 			}
-			if (!product.isReservation && product.type == 2 && product.deposit) {
+			if (!product.isReservation && product.type == 2 && Number(product.deposit) > 0) {
 				return `定金 ¥${product.deposit}${product.depositFrom ? '起' : ''}`
 			}
 			return `¥${Number(product.price || 0).toFixed(2)}`

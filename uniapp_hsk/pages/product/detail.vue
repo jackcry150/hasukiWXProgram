@@ -85,7 +85,7 @@
 		</view>
 
 		<!-- 预售时间信息 -->
-		<view class="presale-timeline" v-if="product.type == 2 && product.startTime && product.endTime">
+		<view class="presale-timeline" v-if="product.type == 2 && product.startTime">
 			<!-- 头部横幅 -->
 			<view class="presale-header">
 				<view class="presale-header-icon">✓</view>
@@ -95,13 +95,6 @@
 			<view class="presale-body">
 				<view class="presale-time-left">
 					<text class="presale-start-text">{{ formatPresaleDate(product.startTime) }} 开始预定</text>
-					<text class="presale-end-text">{{ formatPresaleEndDate(product.endTime) }}前 补款发货</text>
-				</view>
-				<!-- 时间轴 -->
-				<view class="presale-timeline-line">
-					<view class="timeline-dot-start"></view>
-					<view class="timeline-progress" :style="{ width: timelineProgress + '%' }"></view>
-					<view class="timeline-dot-end"></view>
 				</view>
 			</view>
 		</view>
@@ -326,27 +319,6 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 			hasProductSpecs() {
 				return !!(this.product.proportion || this.product.dimensions || this.product.material || this.product.copyright)
 			},
-			// 计算时间轴进度百分比
-			timelineProgress() {
-				if (!this.product.startTimeStamp || !this.product.endTimeStamp) {
-					return 0
-				}
-				const now = Math.floor(Date.now() / 1000)
-				const start = this.product.startTimeStamp
-				const end = this.product.endTimeStamp
-
-				if (now < start) {
-					return 0
-				}
-				if (now >= end) {
-					return 100
-				}
-
-				const total = end - start
-				const passed = now - start
-				const percentage = (passed / total) * 100
-				return Math.min(100, Math.max(0, percentage))
-			}
 		},
         onShow() { if(this.product.id){ this.getProductDetail(this.product.id) } },
         onHide() { this.pauseProductVideo(); clearInterval(this.launchTimer); this.launchTimer=null },
@@ -646,15 +618,6 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 				return `${year}.${month}.${day}`
 			},
 
-			// 格式化预售结束日期：2026年9月30日
-			formatPresaleEndDate(dateStr) {
-				if (!dateStr) return ''
-				const date = new Date(dateStr.replace(/-/g, '/'))
-				const year = date.getFullYear()
-				const month = date.getMonth() + 1
-				const day = date.getDate()
-				return `${year}年${month}月${day}日`
-			},
 
 			hideDeductPopup() {
 				this.showDeduct = false
@@ -985,7 +948,6 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 	}
 
 	.presale-time-left {
-		margin-bottom: 40rpx;
 		display: flex;
 		flex-direction: row;
 		align-items: center;
@@ -996,60 +958,6 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 		color: #111111;
 		font-size: 24rpx;
 		font-weight: 600;
-	}
-
-	.presale-time-right {
-		margin-bottom: 30rpx;
-		text-align: right;
-	}
-
-	.presale-end-text {
-		color: #333333;
-		font-size: 24rpx;
-		font-weight: 500;
-	}
-
-	.presale-timeline-line {
-		position: relative;
-		height: 4rpx;
-		background-color: #d7d7d7;
-		border-radius: 2rpx;
-		margin-top: 20rpx;
-	}
-
-	.timeline-dot-start {
-		position: absolute;
-		left: 0;
-		top: 50%;
-		transform: translateY(-50%);
-		width: 16rpx;
-		height: 16rpx;
-		background-color: #111111;
-		border-radius: 50%;
-		border: 3rpx solid #ffffff;
-		box-shadow: 0 0 0 2rpx #111111;
-	}
-
-	.timeline-dot-end {
-		position: absolute;
-		right: 0;
-		top: 50%;
-		transform: translateY(-50%);
-		width: 16rpx;
-		height: 16rpx;
-		background-color: #ffffff;
-		border: 3rpx solid #111111;
-		border-radius: 50%;
-	}
-
-	.timeline-progress {
-		position: absolute;
-		left: 0;
-		top: 0;
-		height: 100%;
-		background-color: #111111;
-		width: 100%;
-		border-radius: 2rpx;
 	}
 
 	.spec-item {
