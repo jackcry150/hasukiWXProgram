@@ -11,8 +11,11 @@
 		</view>
 
 		<!-- 价格信息 -->
-		<view class="price-section" v-if="product.type == 2">
-			<view class="price-info">
+		<view class="price-section" v-if="product.isReservation || product.type == 2">
+			<view class="price-info" v-if="isPricePending">
+				<text class="deposit-price">待公布</text>
+			</view>
+			<view class="price-info" v-else>
 				<text class="deposit-price">定金¥<text class="deposit-price-val">{{ selectedDepositText }}</text></text>
 				<text class="total-price">商品总价¥{{ selectedPriceText }}</text>
 			</view>
@@ -24,12 +27,12 @@
 
 		<!-- 商品信息 -->
 		<view class="product-info">
-			<view class="discount-info" v-if="product.deduct > 0" @tap="showDeductPopup">
+			<view class="discount-info" v-if="!isPricePending && product.deduct > 0" @tap="showDeductPopup">
 				<text class="discount-text">可使用积分抵扣，抵后到手价¥{{ discountedPriceText }}</text>
 				<text class="right-arrow"></text>
 			</view>
 
-			<view class="product-price" v-if="product.type == 1">
+			<view class="product-price" v-if="!isPricePending && product.type == 1">
 				<view class="price-deposit">￥<text class="fontBold">{{ selectedPriceText }}</text></view>
 			</view>
 
@@ -204,7 +207,8 @@
 					<image :src="activePreviewImage" class="goods-img" mode="aspectFit"></image>
 					<view class="goods-text">
 						<view class="goods-name">{{ product.subtitle }} {{ product.title }}</view>
-						<view class="goods-price" v-if="product.type == 2">定金：¥{{ selectedDepositText }} · 总价：¥{{ selectedPriceText }}</view>
+						<view class="goods-price" v-if="isPricePending">待公布</view>
+						<view class="goods-price" v-else-if="product.type == 2">定金：¥{{ selectedDepositText }} · 总价：¥{{ selectedPriceText }}</view>
 						<view class="goods-price" v-else>¥{{ selectedPriceText }}</view>
 					</view>
 				</view>
@@ -276,6 +280,9 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 			}
 		},
 		computed: {
+			isPricePending() {
+				return !!this.product.isReservation || (this.product.type == 2 && !(this.selectedPrice > 0) && !(Number(this.selectedDepositText) > 0))
+			},
 			hasColorOptions() {
 				return Array.isArray(this.product.version) && this.product.version.length > 0
 			},
