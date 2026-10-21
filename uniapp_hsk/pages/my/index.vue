@@ -99,13 +99,6 @@
 							<text class="chevron">›</text>
 						</view>
 					</view>
-					<view v-if="showLotteryEntry" class="function-item" @click="goToBill()">
-						<view class="function-main">
-							<view class="function-icon"><image class="nav-item-image" src="/static/image/icon_document.png" mode="aspectFit"></image></view>
-							<text class="function-text">积分抽奖</text>
-						</view>
-						<text class="chevron">›</text>
-					</view>
 					<view class="function-item" @click="goToProfile()">
 						<view class="function-main">
 							<view class="function-icon"><image class="nav-item-image" src="/static/image/icon_profile.png" mode="aspectFit"></image></view>
@@ -148,7 +141,6 @@ import { openCustomerService } from '@/utils/customer-service.js'
 		name: 'Profile',
 	data() {
 		return {
-			showLotteryEntry: true,
 			userInfo: {
 					nickName: '',
 					id: '',
@@ -237,17 +229,6 @@ import { openCustomerService } from '@/utils/customer-service.js'
 				} else {
 					uni.navigateTo({
 						url: '/pages/collect/collect'
-					})
-				}
-			},
-
-			goToBill() {
-				const token = uni.getStorageSync('token')
-				if (!token) {
-					this.goLogin()
-				} else {
-					uni.navigateTo({
-						url: '/pages/my/bill'
 					})
 				}
 			},
