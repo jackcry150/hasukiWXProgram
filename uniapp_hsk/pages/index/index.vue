@@ -6,9 +6,7 @@
 		<view class="page-shell" :style="{ paddingTop: `${statusBarHeight + 12}px` }">
 			<view class="topbar">
 				<view class="brand-block">
-					<view class="brand-logo">
-						<image class="brand-lockup" src="/static/image/hasuki-brand-722afb9d.png" mode="aspectFit" role="img" aria-label="HASUKI"></image>
-					</view>
+					<site-brand />
 				</view>
 			</view>
 

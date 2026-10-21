@@ -1,15 +1,8 @@
 <template>
 	<view class="profile">
-		<view class="profile-shell">
+		<view class="profile-shell" :style="{ paddingTop: `${statusBarHeight + 12}px` }">
 			<view class="brand-head">
-				<view class="brand-lockup">
-					<view class="brand-icon-wrap">
-						<image class="brand-icon" src="/static/image/logo1.png" mode="aspectFit" />
-					</view>
-					<view class="brand-copy">
-						<text class="brand-en">HASUKI</text>
-					</view>
-				</view>
+				<site-brand />
 			</view>
 	
 			<view class="profile-card" @click="goToProfile()">
@@ -141,6 +134,7 @@ import { openCustomerService } from '@/utils/customer-service.js'
 		name: 'Profile',
 	data() {
 		return {
+			statusBarHeight: 44,
 			userInfo: {
 					nickName: '',
 					id: '',
@@ -158,7 +152,8 @@ import { openCustomerService } from '@/utils/customer-service.js'
 	},
 
 		onLoad() {
-
+			const systemInfo = uni.getWindowInfo ? uni.getWindowInfo() : {}
+			this.statusBarHeight = systemInfo.statusBarHeight || 22
 		},
 		onShow() {
 			const token = uni.getStorageSync('token')
@@ -302,7 +297,6 @@ import { openCustomerService } from '@/utils/customer-service.js'
 
 <style scoped>
 	.profile {
-		padding-top: var(--status-bar-height);
 		min-height: 100vh;
 		background:
 			radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.38), transparent 24%),
@@ -313,11 +307,15 @@ import { openCustomerService } from '@/utils/customer-service.js'
 	}
 
 	.profile-shell {
-		padding: 28rpx 24rpx 0;
+		padding: 0 24rpx 0;
+		box-sizing: border-box;
 	}
 
 	.brand-head {
-		padding: 14rpx 10rpx 28rpx;
+		display: flex;
+		align-items: center;
+		height: 76rpx;
+		margin-bottom: 26rpx;
 	}
 
 	.brand-lockup {

@@ -2,14 +2,7 @@
 	<view class="verify-page">
 		<view class="verify-shell" :style="{ paddingTop: `${statusBarHeight + 12}px` }">
 			<view class="brand-head">
-				<view class="brand-lockup">
-					<view class="brand-icon-wrap">
-						<image class="brand-icon" src="/static/image/logo1.png" mode="aspectFit"></image>
-					</view>
-					<view class="brand-copy">
-						<text class="brand-en">HASUKI</text>
-					</view>
-				</view>
+				<site-brand />
 			</view>
 
 			<view class="verify-card">
@@ -101,7 +94,10 @@ export default {
 	}
 
 	.brand-head {
-		padding: 12rpx 10rpx 28rpx;
+		display: flex;
+		align-items: center;
+		height: 76rpx;
+		margin-bottom: 26rpx;
 	}
 
 	.brand-lockup {
