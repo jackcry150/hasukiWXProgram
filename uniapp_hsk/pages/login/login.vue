@@ -107,7 +107,7 @@
 					}
 					uni.setStorageSync('token', response.data.token)
                     const commerceReturn = uni.getStorageSync('commerceReturnPath')
-                    if (typeof commerceReturn === 'string' && /^\/pages\/(reservation|group|product|supplement)\/(detail|list)(\?|$)/.test(commerceReturn)) {
+                    if (typeof commerceReturn === 'string' && /^\/pages\/(reservation|group|product|supplement|order|collect)\/(detail|list|collect)(\?|$)/.test(commerceReturn)) {
                         uni.removeStorageSync('commerceReturnPath')
                         uni.redirectTo({ url: commerceReturn })
                         return

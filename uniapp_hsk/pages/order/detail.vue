@@ -79,8 +79,8 @@
 							{{ order.balancePaid == 1 ? '已支付' : '未支付' }}
 						</text>
 						<text class="presale-time" v-if="order.balancePayTime">{{ order.balancePayTime }}</text>
-						<text class="presale-time" v-if="order.balanceDueTime && !order.balancePaid">尾款截止 {{ order.balanceDueTime }}</text>
-						<text class="countdown" v-if="order.balanceDueTimeStamp > 0 && !order.balancePaid && balanceCountdown">
+						<text class="presale-time" v-if="order.canPayBalance && order.balanceDueTime && !order.balancePaid">尾款截止 {{ order.balanceDueTime }}</text>
+						<text class="countdown" v-if="order.canPayBalance && order.balanceDueTimeStamp > 0 && !order.balancePaid && balanceCountdown">
 							{{ balanceCountdown }}
 						</text>
 					</view>
@@ -90,6 +90,13 @@
 					<text class="total-amount">¥{{ order.totalPrice != null ? order.totalPrice : '0.00' }}</text>
 				</view>
 			</view>
+
+            <view class="card balance-reminder-card" v-if="order.canSubscribeBalance">
+                <view class="card-title">尾款提醒</view>
+                <text class="presale-time">{{ order.balanceOpenMessage || '尾款日期待销售确认' }}</text>
+                <button class="btn btn-secondary" :disabled="balanceReminderBusy || reminderAlreadySet" :loading="balanceReminderBusy" @click="handleBalanceReminder">{{ balanceReminderLabel }}</button>
+                <text class="presale-time">订阅后，尾款开放时会提醒你。也可随时在订单中查看日期。</text>
+            </view>
 
 			<!-- 订单信息 -->
 			<view class="card info-card">
@@ -205,6 +212,7 @@
 <script>
 import { openCustomerService } from '@/utils/customer-service.js'
 	import request, { api } from '@/utils/request'
+    import { balanceReminderStatus, subscribeBalanceReminder } from '@/utils/balance-reminder.js'
 
 	const STATUS_COLORS = {
 		'待支付': 'linear-gradient(135deg, #111111, #2f2f2f)',
@@ -236,12 +244,25 @@ import { openCustomerService } from '@/utils/customer-service.js'
 				orderId: '',
 				loading: true,
 				paymentSyncing: false,
+            balanceReminder: null,
+            balanceReminderBusy: false,
 				order: {},
 				balanceCountdown: '',
 				countdownTimer: null
 			}
 		},
 		computed: {
+            balanceReminderLabel() {
+                const state = this.balanceReminder && this.balanceReminder.subscription && this.balanceReminder.subscription.send_state
+                if (state === 'sent') return '尾款提醒已发送'
+                if (state === 'unknown') return '提醒结果待核对'
+                if (state === 'sending') return '提醒发送中'
+                return this.reminderAlreadySet ? '已订阅尾款提醒' : '开启尾款提醒'
+            },
+            reminderAlreadySet() {
+                const s = this.balanceReminder && this.balanceReminder.subscription
+                return !!s && ((s.followed == 1 && s.consent === 'accept' && ['pending','sending','sent','unknown'].includes(s.send_state)) || s.send_state === 'sent')
+            },
 			productList() {
 				return this.order.productList || []
 			},
@@ -249,6 +270,7 @@ import { openCustomerService } from '@/utils/customer-service.js'
 				return STATUS_COLORS[this.order.statusText] || 'linear-gradient(135deg, #3f3f3f, #666666)'
 			},
 			statusMessage() {
+                if (this.order.isPresale && this.order.depositPaid == 1 && this.order.balancePaid != 1) return this.order.balanceOpenMessage || '尾款日期待销售确认'
 				return STATUS_MESSAGES[this.order.statusText] || ''
 			},
 			remarkText() {
@@ -311,6 +333,25 @@ import { openCustomerService } from '@/utils/customer-service.js'
 			}
 		},
 		methods: {
+            offerBalanceReminder() {
+                if (!this.order.canSubscribeBalance || this.reminderAlreadySet || !this.balanceReminder || !this.balanceReminder.reminderAvailable) return
+                uni.showModal({ title:'尾款提醒', content:'需要在尾款开放时收到微信提醒吗？', confirmText:'开启提醒', cancelText:'稍后再说', success:res=>{ if (res.confirm) this.handleBalanceReminder() } })
+            },
+            async handleBalanceReminder() {
+                if (this.balanceReminderBusy || this.reminderAlreadySet) return
+                this.balanceReminderBusy = true
+                try {
+                    if (!this.balanceReminder) {
+                        this.balanceReminder = await balanceReminderStatus(this.orderId)
+                        uni.showToast({ title:'提醒信息已更新，请再次点击开启', icon:'none' })
+                        return
+                    }
+                    const result = await subscribeBalanceReminder(this.orderId, this.balanceReminder)
+                    this.balanceReminder = result.state
+                    uni.showToast({ title:result.accepted ? '已订阅尾款提醒' : '未开启提醒，请留意订单日期', icon:'none' })
+                } catch (e) { uni.showToast({ title:e.message || '提醒未开启，请重试', icon:'none' }) }
+                finally { this.balanceReminderBusy = false }
+            },
 			formatAmount(value) {
 				const num = parseFloat(value)
 				return isNaN(num) ? '0.00' : num.toFixed(2)
@@ -322,7 +363,11 @@ import { openCustomerService } from '@/utils/customer-service.js'
 					const res = await api.order.detail({ id: orderId })
 					if (res.code === 200 && res.data) {
 						this.order = res.data
-						if (this.order.balanceDueTimeStamp > 0 && this.order.balancePaid == 0) {
+                        this.balanceReminder = null
+                        if (this.order.canSubscribeBalance) {
+                            try { this.balanceReminder = await balanceReminderStatus(orderId) } catch (_) { /* Retry from the reminder button. */ }
+                        }
+						if (this.order.canPayBalance && this.order.balanceDueTimeStamp > 0 && this.order.balancePaid == 0) {
 							this.startBalanceCountdown()
 						}
 					} else {
@@ -407,7 +452,7 @@ import { openCustomerService } from '@/utils/customer-service.js'
 					success: () => {
 						const msg = payType === 'deposit' ? '定金支付成功' : payType === 'balance' ? '尾款支付成功' : '支付成功'
 						uni.showToast({ title: msg, icon: 'success' })
-						setTimeout(() => this.loadOrderDetail(this.orderId), 1500)
+						setTimeout(async () => { await this.loadOrderDetail(this.orderId); if (payType === 'deposit') this.offerBalanceReminder() }, 1500)
 					},
 					fail: (err) => {
 						const msg = err.errMsg && err.errMsg.indexOf('cancel') !== -1 ? '支付已取消' : '支付失败，请重试'
@@ -567,6 +612,9 @@ import { openCustomerService } from '@/utils/customer-service.js'
 </script>
 
 <style scoped>
+    .balance-reminder-card .presale-time { display: block; line-height: 1.6; }
+    .balance-reminder-card .btn { display: block; width: 100%; flex: none; margin: 20rpx 0; min-height: 72rpx; }
+
 	.order-detail {
 		background: #f2f2f2;
 		padding-bottom: 180rpx;

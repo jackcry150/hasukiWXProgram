@@ -11,11 +11,14 @@
 					<view class="catalog-copy">
 						<text class="catalog-brand">HASUKI COLLECTION</text>
 						<text class="catalog-title">{{ activeCategory.title }}</text>
-						<text class="catalog-desc">{{ activeCategory.description }}</text>
 					</view>
 					<text class="catalog-count">{{ catalogSummary }}</text>
 				</view>
 
+			<view class="catalog-search">
+				<input v-model="searchKeyword" class="search-input" placeholder="搜索商品名称、型号" aria-label="搜索商品名称、型号" confirm-type="search" :maxlength="80" @confirm="dismissKeyboard" />
+				<button v-if="searchKeyword" class="search-clear" aria-label="清空搜索" @tap="searchKeyword = ''">×</button>
+			</view>
 				<scroll-view
 					class="category-scroll"
 					scroll-x
@@ -35,6 +38,11 @@
 						</view>
 					</view>
 				</scroll-view>
+			<view class="catalog-filters">
+				<picker :range="stateOptions" range-key="label" :value="stateIndex" @change="stateIndex = Number($event.detail.value)"><view class="filter-control">{{ stateOptions[stateIndex].label }} ▾</view></picker>
+				<picker :range="scaleOptions" :value="scaleIndex" @change="selectedScale = scaleOptions[Number($event.detail.value)] === '全部比例' ? '' : scaleOptions[Number($event.detail.value)]"><view class="filter-control">{{ selectedScale || '全部比例' }} ▾</view></picker>
+				<picker :range="sortOptions" :value="sortIndex" @change="sortIndex = Number($event.detail.value)"><view class="filter-control">{{ sortOptions[sortIndex] }} ▾</view></picker>
+			</view>
 			</view>
 
 			<view v-if="loading" class="product-grid" aria-label="商品加载中">
@@ -60,8 +68,7 @@
 
 			<view v-else-if="!displayProducts.length" class="state-panel">
 				<image class="state-image" src="/static/image/no-data.png" mode="aspectFit"></image>
-				<text class="state-title">{{ activeCategory.emptyTitle }}</text>
-				<text class="state-desc">{{ activeCategory.emptyDescription }}</text>
+				<text class="state-title">{{ hasFilters ? '没有符合条件的商品' : '暂无商品' }}</text><button v-if="hasFilters" class="state-action" @tap="resetFilters">查看全部商品</button>
 			</view>
 
 			<view v-else class="product-grid">
@@ -75,12 +82,12 @@
 				>
 					<view class="product-image-wrap">
 						<image class="product-image" :src="getProductImage(product)" mode="aspectFill" lazy-load></image>
-						<text class="product-tag">{{ product.isReservation ? '开售预约' : getCategoryName(product.category_code) }}</text>
-						<view class="product-countdown" v-if="!product.isReservation && product.type == 2">限量预售</view>
+						<text class="product-tag">{{ getCategoryName(product.category_code) }}</text>
+						<view class="product-countdown">{{ getProductBadge(product) }}</view>
 					</view>
 					<view class="product-body">
 						<text class="product-name">{{ product.title || '新品系列' }}</text>
-						<text class="product-desc">{{ product.subtitle || '更多商品信息请进入详情页查看' }}</text>
+						<text v-if="productScales(product).length" class="product-scale">{{ productScales(product).join(' · ') }}</text><text v-if="productSubtitle(product)" class="product-desc">{{ productSubtitle(product) }}</text>
 						<view class="product-meta">
 							<text class="product-price">{{ getProductPrice(product) }}</text>
 							<text class="product-detail-link">{{ product.isReservation ? '去预约' : '查看详情' }}</text>
@@ -94,15 +101,16 @@
 
 <script>
 import { api } from '@/utils/request.js'
+import { browseProducts, productScales, productSubtitle, saleState, decodeSearchKeyword } from '@/utils/catalog-browse.js'
 
 const CATEGORY_OPTIONS = [
-	{ code: '', label: '全部', title: '全部商品', description: '探索 HASUKI 可动人偶与造型系列', emptyTitle: '商品正在准备中', emptyDescription: '商品上架后会第一时间出现在这里。' },
-	{ code: 'military', label: '军事', title: '军事系列', description: '战术主题、军事风格与收藏作品', emptyTitle: '军事系列正在上新', emptyDescription: '军事分类暂时没有商品，敬请期待。' },
-	{ code: 'anime', label: '二次元', title: '二次元系列', description: '动画、游戏与潮流文化主题作品', emptyTitle: '二次元系列正在上新', emptyDescription: '二次元分类暂时没有商品，敬请期待。' },
-	{ code: 'figure', label: '手办', title: '手办系列', description: '角色收藏、展示模型与限定作品', emptyTitle: '手办系列正在上新', emptyDescription: '手办分类暂时没有商品，敬请期待。' },
-	{ code: 'accessory_pack', label: '配件包', title: '配件包系列', description: '替换部件、造型配件与组合套装', emptyTitle: '配件包系列正在上新', emptyDescription: '配件包分类暂时没有商品，敬请期待。' },
-	{ code: 'clothing_pack', label: '服装包', title: '服装包系列', description: '完整造型、主题服饰与搭配套装', emptyTitle: '服装包系列正在上新', emptyDescription: '服装包分类暂时没有商品，敬请期待。' },
-	{ code: 'doll_socks', label: '袜子', title: '袜子系列', description: '人偶袜装、腿部造型与穿搭单品', emptyTitle: '袜子系列正在上新', emptyDescription: '袜子分类暂时没有商品，敬请期待。' }
+	{ code: '', label: '全部', title: '全部商品' },
+	{ code: 'military', label: '军事', title: '军事系列' },
+	{ code: 'anime', label: '二次元', title: '二次元系列' },
+	{ code: 'figure', label: '手办', title: '手办系列' },
+	{ code: 'accessory_pack', label: '配件包', title: '配件包系列' },
+	{ code: 'clothing_pack', label: '服装包', title: '服装包系列' },
+	{ code: 'doll_socks', label: '袜子', title: '袜子系列' }
 ]
 
 const CATEGORY_NAMES = {
@@ -122,6 +130,12 @@ export default {
 		return {
 			categoryOptions: CATEGORY_OPTIONS,
 			activeCategoryCode: '',
+			searchKeyword: '',
+			selectedScale: '',
+			stateIndex: 0,
+			stateOptions: [{ label: '全部状态', value: '' }, { label: '现货', value: 'stock' }, { label: '预售', value: 'presale' }, { label: '新品预告', value: 'preview' }],
+			sortIndex: 0,
+			sortOptions: ['在售优先', '推荐排序'],
 			hotProducts: [],
 			recommendedProducts: [],
 			loading: true,
@@ -137,17 +151,19 @@ export default {
 			return this.categoryOptions.find((category) => category.code === this.activeCategoryCode) || this.categoryOptions[0]
 		},
 		displayProducts() {
-			const merged = [...this.hotProducts, ...this.recommendedProducts]
-			const seen = new Set()
-			return merged.filter((item) => {
-				if (!item) return false
-				const key = item.id !== undefined && item.id !== null
-					? `id:${item.id}`
-					: `fallback:${item.title || ''}:${item.price || ''}`
-				if (seen.has(key)) return false
-				seen.add(key)
-				return true
+			return browseProducts([...this.hotProducts, ...this.recommendedProducts], {
+				keyword: this.searchKeyword, scale: this.selectedScale,
+				state: this.stateOptions[this.stateIndex].value, availableFirst: this.sortIndex === 0
 			})
+		},
+		scaleOptions() {
+			const scales = [...new Set([...this.hotProducts, ...this.recommendedProducts].flatMap(productScales))]
+			if (this.selectedScale && !scales.includes(this.selectedScale)) scales.push(this.selectedScale)
+			return ['全部比例', ...scales.sort((a, b) => Number(a.slice(2)) - Number(b.slice(2)))]
+		},
+		scaleIndex() { return this.selectedScale ? this.scaleOptions.indexOf(this.selectedScale) : 0 },
+		hasFilters() {
+			return !!(this.searchKeyword.trim() || this.selectedScale || this.stateIndex || this.activeCategoryCode)
 		},
 		catalogSummary() {
 			if (this.loading) return '加载中'
@@ -157,6 +173,7 @@ export default {
 	},
 
 	onLoad(options = {}) {
+		this.searchKeyword = decodeSearchKeyword(options.keyword)
 		this.activeCategoryCode = this.normalizeCategoryCode(options.category_code)
 		this.updateNavigationTitle()
 		this.fetchProducts(true)
@@ -181,10 +198,17 @@ export default {
 	},
 
 	methods: {
+		productScales, productSubtitle,
+		dismissKeyboard() { uni.hideKeyboard() },
+		resetFilters() {
+			this.searchKeyword = ''; this.selectedScale = ''; this.stateIndex = 0
+			if (this.activeCategoryCode) return this.changeCategory('')
+		},
+
 		normalizeCategoryCode(value) {
 			if (typeof value !== 'string') return ''
 			const normalized = value.trim().toLowerCase()
-			return this.categoryOptions.some((category) => category.code === normalized) ? normalized : ''
+			return /^[a-z][a-z0-9_]{0,31}$/.test(normalized) ? normalized : ''
 		},
 
 		changeCategory(categoryCode) {
@@ -220,6 +244,15 @@ export default {
 					throw new Error((response && response.msg) || '商品加载失败')
 				}
 
+				if (Array.isArray(response.data.categories)) {
+					this.categoryOptions = [CATEGORY_OPTIONS[0], ...response.data.categories.map((category) => ({
+						code: category.id, label: category.title, title: category.title + '系列',
+						description: '浏览' + category.title + '分类商品', resultTitle: category.title + '商品',
+						emptyTitle: '该分类暂无商品', emptyDescription: '新品上架后会出现在这里。'
+					}))]
+					this.updateNavigationTitle()
+				}
+
 				const hot = Array.isArray(response.data.hot) ? response.data.hot : []
 				const recommended = Array.isArray(response.data.recom) ? response.data.recom : []
 				this.hotProducts = this.filterCategoryProducts(hot, categoryCode)
@@ -244,6 +277,8 @@ export default {
 		},
 
 		getCategoryName(categoryCode) {
+			const category = this.categoryOptions.find((item) => item.code === categoryCode)
+			if (category) return category.label
 			return CATEGORY_NAMES[categoryCode] || 'HASUKI'
 		},
 
@@ -266,11 +301,16 @@ export default {
 			return this.placeholderImage
 		},
 
+		getProductBadge(product) {
+			if (product && Number(product.is_supervising) === 1) return '监修中'
+			return { preview: '新品预告', presale: '预售', stock: '现货', closed: '预订结束' }[saleState(product)]
+		},
+
 		getProductPrice(product) {
-			if (!product) return '¥0.00'
-			if (!product.isReservation && product.type == 2 && Number(product.deposit) > 0) {
-				return `定金 ¥${Number(product.deposit).toFixed(2)}${product.depositFrom ? '起' : ''}`
-			}
+			if (product && Number(product.is_supervising) === 1) return '待公布'
+			if (!product) return '价格待更新'
+			if (product.isReservation && !(Number(product.price) > 0)) return '价格待公布'
+			if (!product.isReservation && product.type == 2 && Number(product.deposit) > 0) return `定金 ¥${Number(product.deposit).toFixed(2)}${product.depositFrom ? '起' : ''}`
 			return `¥${Number(product.price || 0).toFixed(2)}`
 		},
 
@@ -286,6 +326,18 @@ export default {
 </script>
 
 <style scoped>
+.catalog-search { display:flex; align-items:center; background:#fff; border:1rpx solid #dddddd; border-radius:16rpx; padding:0 20rpx; margin-bottom:20rpx; }
+.search-input { flex:1; min-width:0; height:80rpx; font-size:28rpx; }
+.search-clear { margin:0; padding:0; width:72rpx; height:80rpx; line-height:80rpx; background:transparent; font-size:36rpx; color:#555555; }
+.search-clear::after { border:0; }
+.category-scroll { width:100%; white-space:nowrap; }
+.catalog-filters { display:flex; gap:12rpx; padding:16rpx 0 24rpx; }
+.catalog-filters picker { flex:1; min-width:0; }
+.filter-control { text-align:center; font-size:26rpx; line-height:72rpx; color:#555555; background:#eeeeee; border-radius:12rpx; }
+.reset-filter { color:#555555; font-size:26rpx; padding:18rpx 0 18rpx 24rpx; }
+.product-scale { font-size:24rpx; color:#555555; }
+
+
 .product-list-page {
 	position: relative;
 	min-height: 100vh;

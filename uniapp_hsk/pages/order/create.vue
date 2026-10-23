@@ -72,6 +72,7 @@
 					<text class="method-label">尾款</text>
 					<view class="method-value">
 						<text class="balance-amount">¥{{ totalBalanceAmount.toFixed(2) }}</text>
+                        <text class="balance-tip" v-if="looseGoodsAmount > 0 || shippingFee > 0">（含散件及运费）</text>
 					</view>
 				</view>
 			</view>
@@ -210,7 +211,7 @@
 					.map(item => ({
 						...item,
 						balanceAmount: ((Number(item.price) - Number(item.deposit || 0)) * (item.quantity || 1)).toFixed(2),
-						balanceTip: typeof item.presaleBalanceTip === 'string' ? item.presaleBalanceTip.trim() : '预售结束后支付'
+						balanceTip: typeof item.presaleBalanceTip === 'string' ? item.presaleBalanceTip.trim() : '尾款开放后支付'
 					}))
 			},
 			hasPresale() {
@@ -225,6 +226,9 @@
 				})
 				return total
 			},
+			looseGoodsAmount() {
+                return this.product.filter(item => item.type != 2).reduce((sum, item) => sum + Number(item.price) * Number(item.quantity || 1), 0)
+            },
 			totalBalanceAmount() {
 				let total = 0
 				this.product.forEach(item => {
@@ -233,12 +237,12 @@
 						total += balance * (item.quantity || 1)
 					}
 				})
-				return total
+				return this.hasPresale ? total + this.looseGoodsAmount + Number(this.shippingFee || 0) : 0
 			},
 			totalPrice() {
-				// 如果是预售订单，显示定金+运费，否则显示总价+运费
+				// 如果是预售订单，只显示预售定金，否则显示总价+运费
 				if (this.hasPresale && this.totalDepositAmount > 0) {
-					return (parseFloat(this.totalDepositAmount) + parseFloat(this.shippingFee)).toFixed(2)
+					return Number(this.totalDepositAmount).toFixed(2)
 				}
 				const productTotal = this.product
 					.reduce((total, item) => total + (item.price * item.quantity), 0)
@@ -389,7 +393,7 @@
 						price: selectedPrice,
 						version: versionStr,
 						presaleBalanceTip: p.variantBalanceTips && typeof p.variantBalanceTips[versionStr] === 'string'
-							? p.variantBalanceTips[versionStr] : '预售结束后支付',
+							? p.variantBalanceTips[versionStr] : '尾款开放后支付',
 						quantity: quantity,
 						selected: true,
 						type: p.type,

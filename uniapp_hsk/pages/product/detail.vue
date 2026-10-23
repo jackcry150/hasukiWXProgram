@@ -7,7 +7,7 @@
 					<image :src="image" mode="widthFix" class="product-image" />
 				</swiper-item>
 			</swiper>
-			<view class="preorder-badge" v-if="product.type == 2">{{ product.isReservation ? '新品预告' : '预定开启!' }}</view>
+			<view class="preorder-badge" v-if="product.type == 2">{{ product.isReservation ? '新品预告' : '预订开启' }}</view>
 		</view>
 
 		<!-- 价格信息 -->
@@ -17,10 +17,10 @@
 			</view>
 			<view class="price-info" v-else>
 				<text class="deposit-price">定金¥<text class="deposit-price-val">{{ selectedDepositText }}</text></text>
-				<text class="total-price">商品总价¥{{ selectedPriceText }}</text>
+				<text class="total-price">商品总价¥{{ selectedPriceText }}</text><text class="total-price">尾款¥{{ selectedBalanceText }}</text>
 			</view>
-			<view class="countdown" v-if="product.endTimeStamp">
-				<text class="countdown-text">{{ product.isReservation ? '距离开售' : '预定时间剩余' }}</text>
+			<view class="countdown" v-if="!product.isReservation && product.endTimeStamp">
+				<text class="countdown-text">距预订截止</text>
 				<text class="countdown-time">{{ countdown }}</text>
 			</view>
 		</view>
@@ -92,16 +92,17 @@
 			<!-- 头部横幅 -->
 			<view class="presale-header">
 				<view class="presale-header-icon">✓</view>
-				<text class="presale-header-text">官方预定·优先发货·售后无忧</text>
+				<text class="presale-header-text">预售安排</text>
 			</view>
 			<!-- 主体内容 -->
 			<view class="presale-body">
 				<view class="presale-time-left">
-					<text class="presale-start-text">{{ formatPresaleDate(product.startTime) }} 开始预定</text>
+					<text class="presale-start-text">{{ product.isReservation ? '暂定' : formatPresaleDate(product.startTime) + ' 开始预定' }}</text>
 				</view>
 			</view>
 		</view>
 
+		<view v-if="product.type == 2 && !product.isReservation" class="presale-payment-note"><text>发货时间：以商品详情及订单通知为准</text></view>
 		<!-- 标签页 -->
 		<view class="tabs">
 			<view class="tab-item" :class="contentTab == 1 ? 'active' : '' " @click="switchTab(1)">商品详情</view>
@@ -176,10 +177,10 @@
 					<text>立即购买</text>
 				</view>
 			</view>
-			<!-- 预售商品：立即预约 -->
+			<!-- 预售商品：付定金预订 -->
 			<view class="order-type-btn" v-if="product.id && !product.isReservation && product.type == 2">
 				<view class="order-btn presale-btn" @click="handlePresaleOrder">
-					<text>立即预约</text>
+					<text>付定金预订</text>
 				</view>
 			</view>
 		</view>
@@ -235,7 +236,7 @@
 
 				<view class="add-cart-btn" @tap="addToOrder">
 					<text v-if="orderType == 1">加入购物车</text>
-					<text v-else-if="orderType == 2 && product.type == 2">立即预约</text>
+					<text v-else-if="orderType == 2 && product.type == 2">付定金预订</text>
 					<text v-else-if="orderType == 2">立即购买</text>
 				</view>
 			</view>
@@ -302,6 +303,7 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 				const amount = Number(raw || 0)
 				return Number.isFinite(amount) ? amount.toFixed(2) : '0.00'
 			},
+			selectedBalanceText() { return Math.max(0, this.selectedPrice - Number(this.selectedDepositText)).toFixed(2) },
 			selectedPriceText() {
 				return this.selectedPrice.toFixed(2)
 			},
@@ -641,7 +643,7 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 				this.orderType = type
 			},
 
-			// 处理预售订单（立即预约）
+			// 处理预售订单（付定金预订）
 			handlePresaleOrder() {
 				const token = uni.getStorageSync('token')
 				if (!token) {
@@ -809,6 +811,8 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 </script>
 
 <style scoped>
+.presale-payment-note { padding:24rpx 30rpx; background:#f5f5f5; color:#555; font-size:26rpx; line-height:1.8; }
+.presale-payment-note text { display:block; }
 .product-video-block { width: 100%; margin-bottom: 20rpx; }
 .product-detail-video { display: block; width: 100%; height: 422rpx; background: #000; }
 .product-video-error { display: block; padding: 20rpx; color: #666; font-size: 24rpx; }

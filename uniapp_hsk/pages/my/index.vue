@@ -22,7 +22,7 @@
 						<view class="stats-grid">
 							<view class="stat-item" @click.stop="goToCollect">
 								<text class="stat-number">{{ collectCount }}</text>
-								<text class="stat-label">线上收藏</text>
+								<text class="stat-label">心愿单</text>
 							</view>
 							<view class="stat-item stat-divider">
 								<text class="stat-number">{{ userInfo.snailShells || 0 }}</text>
@@ -33,15 +33,15 @@
 				</view>
 			</view>
 
-			<view class="welfare-banner" @click="goToCustomer">
-				<image class="banner-bg-image" src="/static/image/my-welfare-banner-bg.png" mode="scaleToFill" />
-				<view class="banner-copy">
-					<text class="banner-title">官方客服</text>
-					<text class="banner-desc">商品咨询与订单售后</text>
+			<view data-eventsync="true" class="welfare-banner" @click="goToCustomer">
+				<image data-eventsync="true" class="banner-bg-image" src="/static/image/my-welfare-banner-bg.png" mode="scaleToFill" />
+				<view data-eventsync="true" class="banner-copy">
+					<text data-eventsync="true" class="banner-title">官方客服</text>
+					<text data-eventsync="true" class="banner-desc">商品咨询与订单售后</text>
 				</view>
-				<view class="banner-btn">
-					<text>联系客服</text>
-					<text class="banner-btn-arrow">›</text>
+				<view data-eventsync="true" class="banner-btn">
+					<text data-eventsync="true">联系客服</text>
+					<text data-eventsync="true" class="banner-btn-arrow">›</text>
 				</view>
 			</view>
 
@@ -60,7 +60,7 @@
 					</view>
 					<view class="status-item" @click="goToOrders(8)">
 						<view class="status-icon"><image class="nav-item-image" src="/static/image/icon_booked.png" mode="aspectFit"></image></view>
-						<text class="status-text">已预定</text>
+						<text class="status-text">预售</text>
 					</view>
 					<view class="status-item" @click="goToOrders(2)">
 						<view class="status-icon"><image class="nav-item-image" src="/static/image/icon_shipped.png" mode="aspectFit"></image></view>
@@ -82,6 +82,7 @@
 					<text class="section-title">常用功能</text>
 				</view>
 				<view class="function-list">
+<view class="function-item" @click="goToBrand"><view class="function-main"><view class="function-icon"><image class="nav-item-image" src="/static/image/icon_brand.png" mode="aspectFit" /></view><text class="function-text">品牌介绍</text></view><text class="chevron">›</text></view>
 					<view class="function-item" @click="goToCart()">
 						<view class="function-main">
 							<view class="function-icon"><image class="nav-item-image" src="/static/image/icon_cart.png" mode="aspectFit"></image></view>
@@ -165,6 +166,7 @@ import { openCustomerService } from '@/utils/customer-service.js'
 		},
 
 		methods: {
+			goToBrand() { uni.navigateTo({ url: '/pages/about/about' }) },
 			tryAskArrivalSubscribe() {
 				// #ifdef MP-WEIXIN
 				askArrivalSubscribe(this.userInfo.id, () => api.setting.info({}, { silent: true }))

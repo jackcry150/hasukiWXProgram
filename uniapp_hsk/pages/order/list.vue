@@ -8,8 +8,9 @@
 		</view>
 
 		<!-- 订单列表 -->
-		<view class="order-list-content">
-			<view class="order-item" v-for="(order, index) in orderList" :key="index">
+		<view class="order-search"><input v-model="searchKeyword" placeholder="搜索商品或订单号" aria-label="搜索商品或订单号" :maxlength="80" /><button v-if="searchKeyword" @tap="searchKeyword = ''" aria-label="清空搜索">×</button></view>
+		<view class="order-list-content" v-if="!loading && !loadError">
+			<view class="order-item" v-for="(order, index) in visibleOrders" :key="order.id">
 				<view @click="goToOrderDetail(order)">
 					<view class="order-header">
 						<text class="order-number">订单编号: {{ order.orderNo }}</text>
@@ -30,6 +31,7 @@
 						</view>
 					</view>
 				</view>
+				<view v-if="order.freightNo" class="order-logistics"><text>{{ order.freightName || '物流' }} · {{ order.freightNo }}</text><text v-if="order.freightTime">发货 {{ order.freightTime }}</text></view>
 				<view class="order-bottom" v-if="order.status == 1 || order.status == 8">
 					<view class="order-prire">
 						<text class="order-prire-t">应付</text>
@@ -40,13 +42,18 @@
 						<view class="order-pay-btn" @click="orderPay(order)">立即支付</view>
 					</view>
 				</view>
+				<view v-if="order.status == 10" class="balance-entry" @tap="goToOrderDetail(order)">查看尾款与预售进度 ›</view>
 			</view>
 		</view>
 
 		<!-- 空状态 -->
-		<view class="empty-state" v-if="orderList.length === 0">
+		<view class="empty-state" v-if="loading"><text class="empty-text">加载中…</text></view>
+		<view class="empty-state" v-else-if="loadError"><text class="empty-text">订单加载失败</text><button @tap="loadOrders(currentTab)">重新加载</button></view>
+		<view class="empty-state" v-else-if="visibleOrders.length === 0">
 			<image class="empty-icon" src="/static/image/no-data.png" mode="widthFix" />
-			<text class="empty-text">什么都没有呢~</text>
+			<text class="empty-text">{{ searchKeyword.trim() ? '没有找到相关订单' : '暂无此状态的订单' }}</text>
+			<button v-if="searchKeyword.trim()" @tap="searchKeyword = ''">清空搜索</button>
+			<button v-else @tap="browseProducts">去逛商品</button>
 		</view>
 	</view>
 </template>
@@ -58,15 +65,25 @@
 		data() {
 			return {
 				currentTab: 0,
+				searchKeyword: '', loadError: false, loading: false,
 				tabs: [
 					{ key: 0, label: '全部' },
 					{ key: 1, label: '待支付' },
-					{ key: 8, label: '已预定' },
+					{ key: 8, label: '预售' },
 					{ key: 2, label: '待发货' },
 					{ key: 6, label: '待收货' },
 					{ key: 7, label: '已完成' }
 				],
 				orderList: []
+			}
+		},
+		computed: {
+			visibleOrders() {
+				const words = this.searchKeyword.trim().toLowerCase().split(/\s+/).filter(Boolean)
+				return this.orderList.filter(order => {
+					const text = [order.orderNo, ...(Array.isArray(order.product) ? order.product.map(product => [product.title, product.subtitle].filter(Boolean).join(' ')) : [])].join(' ').toLowerCase()
+					return words.every(word => text.includes(word))
+				})
 			}
 		},
 		onLoad(options) {
@@ -75,12 +92,16 @@
 			}
 			this.loadOrders(this.currentTab)
 		},
+		onShow() { if (!this.loading) this.loadOrders(this.currentTab) },
+		onPullDownRefresh() { return this.loadOrders(this.currentTab).finally(() => uni.stopPullDownRefresh()) },
 		methods: {
+			browseProducts() { uni.navigateTo({ url: '/pages/product/list' }) },
 			goLogin() {
 				uni.showModal({
 					content: '使用当前功能需要您进行登录，是否去登录?',
-					success: function(res) {
+					success: (res) => {
 						if (res.confirm) {
+							uni.setStorageSync('commerceReturnPath', '/pages/order/list?status=' + this.currentTab)
 							uni.navigateTo({
 								url: '/pages/login/login'
 							})
@@ -98,6 +119,12 @@
 				this.loadOrders(tabKey)
 			},
 			async loadOrders(status) {
+				if (this.loading && this._loadingStatus === status) return
+				this._loadingStatus = status
+				const requestSeq = this._requestSeq = (this._requestSeq || 0) + 1
+				this.loading = true
+				this.loadError = false
+				try {
 				const token = uni.getStorageSync('token')
 				if (!token) {
 					this.goLogin()
@@ -107,14 +134,20 @@
 							status: status
 						}
 						const response = await api.order.list(params)
-						this.orderList = response.data
+						if (requestSeq === this._requestSeq) {
+							if (response.code !== 200 || !Array.isArray(response.data)) throw new Error('订单列表加载未完成')
+							this.orderList = response.data
+						}
 					} catch (error) {
+						if (requestSeq !== this._requestSeq) return
+						this.loadError = true
 						uni.showToast({
 							title: '加载失败',
 							icon: 'none'
 						})
 					}
 				}
+				} finally { if (requestSeq === this._requestSeq) this.loading = false }
 			},
 			async orderCancel(o) {
 				try {
@@ -203,6 +236,12 @@
 </script>
 
 <style scoped>
+	.order-search { display:flex; align-items:center; margin:20rpx 24rpx 0; padding:0 20rpx; border:1rpx solid #dddddd; border-radius:16rpx; background:#fff; }
+	.order-search input { flex:1; min-width:0; height:84rpx; font-size:28rpx; }
+	.order-search button { margin:0; background:transparent; width:72rpx; padding:0; font-size:36rpx; }
+	.order-search button::after { border:0; }
+	.balance-entry { margin-top:20rpx; padding:24rpx 12rpx; border-top:1rpx solid #eee; text-align:right; font-size:28rpx; color:#333333; }
+.order-logistics { display:flex;flex-direction:column;gap:8rpx;padding:20rpx 24rpx;color:#666;font-size:24rpx;overflow-wrap:anywhere; }
 	.order-list {
 		background-color: #f5f5f5;
 		min-height: 100vh;

@@ -43,7 +43,7 @@
     {
       "path": "pages/collect/collect",
       "style": {
-        "navigationBarTitleText": "线上收藏卡"
+        "navigationBarTitleText": "心愿单"
       }
     },
     {

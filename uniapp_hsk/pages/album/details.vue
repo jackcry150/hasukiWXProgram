@@ -61,10 +61,10 @@
 					</view>
 				</scroll-view>
 
-				<view class="album-content">
+				<view class="album-content"><button class="album-shop" @tap="searchProducts">搜索相关商品</button>
 					<view v-if="groupItem === 1" class="album-overview">
 						<text class="content-title">系列概览</text>
-						<text class="album-overview__text">{{ overviewText }}</text>
+						<text v-if="overviewText" class="album-overview__text">{{ overviewText }}</text>
 						<view v-if="visibleLabels.length" class="overview-list">
 							<view v-for="(label, index) in visibleLabels" :key="`overview-${index}`" class="overview-list__item">
 								<view class="overview-list__dot"></view>
@@ -129,6 +129,7 @@
 
 <script>
 	import { api } from '@/utils/request.js'
+	import { albumSearchKeyword } from '@/utils/catalog-browse.js'
 
 	export default {
 		data() {
@@ -162,7 +163,7 @@
 			},
 
 			overviewText() {
-				return this.albumInfo.description || this.albumInfo.subtitle || '查看本系列的产品信息、内容物与完整图片。'
+				return this.albumInfo.description || this.albumInfo.subtitle || ''
 			},
 
 			productSpecs() {
@@ -213,6 +214,7 @@
 		},
 
 		methods: {
+			searchProducts() { uni.navigateTo({ url: '/pages/product/list?keyword=' + encodeURIComponent(albumSearchKeyword(this.albumInfo)) }) },
 			async getAlbumDetails(id) {
 				this.isLoading = true
 				this.loadError = false
@@ -256,6 +258,7 @@
 </script>
 
 <style scoped>
+.album-shop { background:#222; color:#fff; font-size:28rpx; border-radius:14rpx; margin:0 0 24rpx; line-height:3; }
 	.album-detail { min-height: 100vh; padding-bottom: env(safe-area-inset-bottom); background: #f2f3f5; }
 	.album-hero { position: relative; width: 100%; height: 900rpx; overflow: hidden; background: #dfe1e4; }
 	.album-hero__image { display: block; width: 100%; height: 100%; }

@@ -36,14 +36,12 @@
 				>
 					<image :data-eventsync="item.url === '/pages/customer/customer'" class="quick-icon" :src="item.icon" mode="aspectFit"></image>
 					<text :data-eventsync="item.url === '/pages/customer/customer'" class="quick-title">{{ item.title }}</text>
-					<text :data-eventsync="item.url === '/pages/customer/customer'" class="quick-desc">{{ item.desc }}</text>
 				</view>
 			</view>
 
 			<view class="section-head">
 				<view class="section-copy">
 					<text class="section-title">精选推荐</text>
-					<text class="section-subtitle">人气娃衣精选</text>
 				</view>
 				<view class="section-link" @click="goToProductList">
 					<text>查看全部</text>
@@ -68,7 +66,7 @@
 					</view>
 					<view class="product-body">
 						<text class="product-name">{{ product.title || '新品系列' }}</text>
-						<text class="product-desc">{{ getProductDescription(product) }}</text>
+						<text v-if="getProductDescription(product)" class="product-desc">{{ getProductDescription(product) }}</text>
 						<view class="product-meta">
 							<text class="product-price">{{ getProductPrice(product) }}</text>
 							<view
@@ -98,6 +96,7 @@
 import { openCustomerService } from '@/utils/customer-service.js'
 import reservationHome from '@/utils/reservation-home.js'
 import { api } from '@/utils/request.js'
+import { productSubtitle } from '@/utils/catalog-browse.js'
 
 export default {
     mixins: [reservationHome],
@@ -112,26 +111,22 @@ export default {
 			placeholderImage: '/static/image/600_694.png',
 			quickActions: [
 				{
-					title: '品牌介绍',
-					desc: '了解我们',
-					icon: '/static/image/icon_brand.png',
-					url: '/pages/about/about'
+					title: '全部商品',
+					icon: '/static/image/icon_shop.png',
+					url: '/pages/product/list'
 				},
 				{
-					title: '线上收藏卡',
-					desc: '收集专属回忆',
+					title: '心愿单',
 					icon: '/static/image/icon_collect.png',
 					url: '/pages/collect/collect'
 				},
 				{
 					title: '联系客服',
-					desc: '贴心为您服务',
 					icon: '/static/image/icon_customer.png',
 					url: '/pages/customer/customer'
 				},
 				{
 					title: '特别贩售',
-					desc: '限时发售中',
 					icon: '/static/image/icon_shop.png',
 					url: '/pages/sell/sell'
 				}
@@ -169,7 +164,7 @@ export default {
 				}
 				seen.add(key)
 				return true
-			}).slice(0, 4)
+			}).slice(0, 6)
 		}
 	},
 
@@ -334,7 +329,7 @@ export default {
 		},
 
 		getProductTag(product, index) {
-			if (product && product.isReservation) return '开售预约'
+			if (product && product.isReservation) return '新品预告'
 			if (product && product.type == 2) {
 				return '预售'
 			}
@@ -342,15 +337,7 @@ export default {
 			return tags[index % tags.length]
 		},
 
-		getProductDescription(product) {
-			if (product && product.subtitle) {
-				return product.subtitle
-			}
-			if (product && product.type == 2) {
-				return '限量预定款'
-			}
-			return '软萌可爱系列'
-		},
+		getProductDescription(product) { return productSubtitle(product) },
 
 		getProductPrice(product) {
 			if (product && product.isReservation) return '待公布'
@@ -774,11 +761,6 @@ export default {
 	font-weight: 900;
 	color: #101010;
 	margin-right: 14rpx;
-}
-
-.section-subtitle {
-	font-size: 22rpx;
-	color: #7d7d7d;
 }
 
 .section-link {
