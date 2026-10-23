@@ -23,9 +23,12 @@
 		</view>
 
 		<!-- 空状态 -->
-		<view class="empty-state" v-if="collectList.length === 0">
+		<view class="empty-state" v-if="loading"><text class="empty-text">加载中…</text></view>
+		<view class="empty-state" v-else-if="loadError"><text class="empty-text">心愿单加载失败</text><button class="browse-button" @tap="getCollectList">重新加载</button></view>
+		<view class="empty-state" v-else-if="collectList.length === 0">
 			<image class="empty-icon" src="/static/image/no-data.png" mode="widthFix" />
-			<text class="empty-text">什么都没有呢~</text>
+			<text class="empty-text">还没有收藏商品</text>
+			<button class="browse-button" @tap="browseProducts">去逛商品</button>
 		</view>
 	</view>
 </template>
@@ -37,10 +40,12 @@
 		data() {
 			return {
 				collectList: [],
+				loading: false,
+				loadError: false,
 				swipeOptions: [{
 					text: '删除',
 					style: {
-						backgroundColor: '#111111',
+						backgroundColor: '#dc0000',
 						color: '#ffffff'
 					}
 				}]
@@ -60,12 +65,14 @@
 		},
 
 		methods: {
+			browseProducts() { uni.navigateTo({ url: '/pages/product/list' }) },
 
 			goLogin() {
 				uni.showModal({
 					content: '使用当前功能需要您进行登录，是否去登录?',
 					success: function(res) {
 						if (res.confirm) {
+							uni.setStorageSync('commerceReturnPath', '/pages/collect/collect')
 							uni.navigateTo({
 								url: '/pages/login/login'
 							})
@@ -79,20 +86,20 @@
 			},
 
 			async getCollectList() {
+				if (this.loading) return
 				const token = uni.getStorageSync('token')
 				if (!token) {
 					this.goLogin()
 				} else {
-					uni.showLoading({
-						title: '加载中'
-					});
+					this.loading = true
+					this.loadError = false
 					try {
 						const response = await api.collect.list()
+						if (response.code !== 200 || !Array.isArray(response.data)) throw new Error('加载失败')
 						this.collectList = response.data
-						uni.hideLoading()
 					} catch (error) {
-
-					}
+						this.loadError = true
+					} finally { this.loading = false }
 				}
 			},
 			
@@ -100,7 +107,7 @@
 				if (e.position === 'right' && e.content.text === '删除') {
 					uni.showModal({
 						title: '提示',
-						content: '确定要删除这款商品吗？',
+						content: '将这款商品移出心愿单？',
 						success: (res) => {
 							if (res.confirm) {
 								this.deleteCollect(v, i)
@@ -162,6 +169,7 @@
 </script>
 
 <style scoped>
+.browse-button { margin-top:28rpx; font-size:28rpx; background:#333333; color:#333333; padding:0 44rpx; }
 	.collect {
 		background-color: #f5f5f5;
 		min-height: calc(100vh - 80rpx);

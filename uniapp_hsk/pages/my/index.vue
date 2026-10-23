@@ -1,21 +1,14 @@
 <template>
 	<view class="profile">
-		<view class="profile-shell">
+		<view class="profile-shell" :style="{ paddingTop: `${statusBarHeight + 12}px` }">
 			<view class="brand-head">
-				<view class="brand-lockup">
-					<view class="brand-icon-wrap">
-						<image class="brand-icon" src="/static/image/logo1.png" mode="aspectFit" />
-					</view>
-					<view class="brand-copy">
-						<text class="brand-en">HASUKI</text>
-					</view>
-				</view>
+				<site-brand />
 			</view>
 	
 			<view class="profile-card" @click="goToProfile()">
 				<image class="card-bg-image" src="/static/image/my-profile-card-bg.png" mode="scaleToFill" />
 				<view class="profile-top">
-					<image class="avatar" :src="userInfo.avatar || '/static/image/default_avatar.jpg'" mode="aspectFill" />
+					<image class="avatar" :src="userInfo.avatar || '/static/image/hasuki_avatar_20260922.jpg'" mode="aspectFill" />
 					<view class="profile-info">
 						<view class="user-headline">
 							<view class="user-copy">
@@ -29,7 +22,7 @@
 						<view class="stats-grid">
 							<view class="stat-item" @click.stop="goToCollect">
 								<text class="stat-number">{{ collectCount }}</text>
-								<text class="stat-label">线上收藏</text>
+								<text class="stat-label">心愿单</text>
 							</view>
 							<view class="stat-item stat-divider">
 								<text class="stat-number">{{ userInfo.snailShells || 0 }}</text>
@@ -40,15 +33,15 @@
 				</view>
 			</view>
 
-			<view class="welfare-banner" @click="goToCustomer">
-				<image class="banner-bg-image" src="/static/image/my-welfare-banner-bg.png" mode="scaleToFill" />
-				<view class="banner-copy">
-					<text class="banner-title">官方客服</text>
-					<text class="banner-desc">商品咨询与订单售后</text>
+			<view data-eventsync="true" class="welfare-banner" @click="goToCustomer">
+				<image data-eventsync="true" class="banner-bg-image" src="/static/image/my-welfare-banner-bg.png" mode="scaleToFill" />
+				<view data-eventsync="true" class="banner-copy">
+					<text data-eventsync="true" class="banner-title">官方客服</text>
+					<text data-eventsync="true" class="banner-desc">商品咨询与订单售后</text>
 				</view>
-				<view class="banner-btn">
-					<text>联系客服</text>
-					<text class="banner-btn-arrow">›</text>
+				<view data-eventsync="true" class="banner-btn">
+					<text data-eventsync="true">联系客服</text>
+					<text data-eventsync="true" class="banner-btn-arrow">›</text>
 				</view>
 			</view>
 
@@ -67,7 +60,7 @@
 					</view>
 					<view class="status-item" @click="goToOrders(8)">
 						<view class="status-icon"><image class="nav-item-image" src="/static/image/icon_booked.png" mode="aspectFit"></image></view>
-						<text class="status-text">已预定</text>
+						<text class="status-text">预售</text>
 					</view>
 					<view class="status-item" @click="goToOrders(2)">
 						<view class="status-icon"><image class="nav-item-image" src="/static/image/icon_shipped.png" mode="aspectFit"></image></view>
@@ -89,6 +82,7 @@
 					<text class="section-title">常用功能</text>
 				</view>
 				<view class="function-list">
+<view class="function-item" @click="goToBrand"><view class="function-main"><view class="function-icon"><image class="nav-item-image" src="/static/image/icon_brand.png" mode="aspectFit" /></view><text class="function-text">品牌介绍</text></view><text class="chevron">›</text></view>
 					<view class="function-item" @click="goToCart()">
 						<view class="function-main">
 							<view class="function-icon"><image class="nav-item-image" src="/static/image/icon_cart.png" mode="aspectFit"></image></view>
@@ -98,13 +92,6 @@
 							<view class="cart-badge" v-if="cartCount > 0">{{ cartCount }}</view>
 							<text class="chevron">›</text>
 						</view>
-					</view>
-					<view v-if="showLotteryEntry" class="function-item" @click="goToBill()">
-						<view class="function-main">
-							<view class="function-icon"><image class="nav-item-image" src="/static/image/icon_document.png" mode="aspectFit"></image></view>
-							<text class="function-text">积分抽奖</text>
-						</view>
-						<text class="chevron">›</text>
 					</view>
 					<view class="function-item" @click="goToProfile()">
 						<view class="function-main">
@@ -148,11 +135,11 @@ import { openCustomerService } from '@/utils/customer-service.js'
 		name: 'Profile',
 	data() {
 		return {
-			showLotteryEntry: true,
+			statusBarHeight: 44,
 			userInfo: {
 					nickName: '',
 					id: '',
-					avatar: '/static/image/default_avatar.jpg',
+					avatar: '/static/image/hasuki_avatar_20260922.jpg',
 					snailShells: 0
 			},
 			cartCount: 0,
@@ -166,7 +153,8 @@ import { openCustomerService } from '@/utils/customer-service.js'
 	},
 
 		onLoad() {
-
+			const systemInfo = uni.getWindowInfo ? uni.getWindowInfo() : {}
+			this.statusBarHeight = systemInfo.statusBarHeight || 22
 		},
 		onShow() {
 			const token = uni.getStorageSync('token')
@@ -178,6 +166,7 @@ import { openCustomerService } from '@/utils/customer-service.js'
 		},
 
 		methods: {
+			goToBrand() { uni.navigateTo({ url: '/pages/about/about' }) },
 			tryAskArrivalSubscribe() {
 				// #ifdef MP-WEIXIN
 				askArrivalSubscribe(this.userInfo.id, () => api.setting.info({}, { silent: true }))
@@ -237,17 +226,6 @@ import { openCustomerService } from '@/utils/customer-service.js'
 				} else {
 					uni.navigateTo({
 						url: '/pages/collect/collect'
-					})
-				}
-			},
-
-			goToBill() {
-				const token = uni.getStorageSync('token')
-				if (!token) {
-					this.goLogin()
-				} else {
-					uni.navigateTo({
-						url: '/pages/my/bill'
 					})
 				}
 			},
@@ -321,7 +299,6 @@ import { openCustomerService } from '@/utils/customer-service.js'
 
 <style scoped>
 	.profile {
-		padding-top: var(--status-bar-height);
 		min-height: 100vh;
 		background:
 			radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.38), transparent 24%),
@@ -332,11 +309,15 @@ import { openCustomerService } from '@/utils/customer-service.js'
 	}
 
 	.profile-shell {
-		padding: 28rpx 24rpx 0;
+		padding: 0 24rpx 0;
+		box-sizing: border-box;
 	}
 
 	.brand-head {
-		padding: 14rpx 10rpx 28rpx;
+		display: flex;
+		align-items: center;
+		height: 76rpx;
+		margin-bottom: 26rpx;
 	}
 
 	.brand-lockup {

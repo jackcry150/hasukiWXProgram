@@ -1,13 +1,8 @@
 <template>
 	<view class="ai-customer-page">
-		<view class="page-shell">
+		<view class="page-shell" :style="{ paddingTop: `${statusBarHeight + 12}px` }">
 			<view class="brand-head">
-				<view class="brand-lockup" @click="goBack">
-					<image class="brand-logo" src="/static/image/default_avatar.jpg" mode="aspectFit"></image>
-					<view class="brand-copy">
-						<text class="brand-en">HASUKI</text>
-					</view>
-				</view>
+				<view @click="goBack"><site-brand /></view>
 			</view>
 
 			<view class="hero-card">
@@ -149,6 +144,7 @@ const QUICK_CARD_META = [
 export default {
 	data() {
 		return {
+			statusBarHeight: 44,
 			scene: 'presale',
 			productId: '',
 			orderId: '',
@@ -181,6 +177,8 @@ export default {
 		}
 	},
 	onLoad(options) {
+			const systemInfo = uni.getWindowInfo ? uni.getWindowInfo() : {}
+			this.statusBarHeight = systemInfo.statusBarHeight || 22
 		this.scene = options.scene === 'aftersale' ? 'aftersale' : 'presale'
 		this.productId = options.productId || ''
 		this.orderId = options.orderId || ''
@@ -275,15 +273,14 @@ export default {
 		color: #111111;
 	}
 	.page-shell {
-		padding: calc(var(--status-bar-height) + 34rpx) 34rpx 0;
+		padding: 0 24rpx 0;
 		box-sizing: border-box;
 	}
 	.brand-head {
-		height: 94rpx;
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 28rpx;
+		height: 76rpx;
+		margin-bottom: 26rpx;
 	}
 	.brand-lockup {
 		display: flex;

@@ -7,29 +7,32 @@
 					<image :src="image" mode="widthFix" class="product-image" />
 				</swiper-item>
 			</swiper>
-			<view class="preorder-badge" v-if="product.type == 2">{{ product.isReservation ? '新品预告' : '预定开启!' }}</view>
+			<view class="preorder-badge" v-if="product.type == 2">{{ product.isReservation ? '新品预告' : '预订开启' }}</view>
 		</view>
 
 		<!-- 价格信息 -->
-		<view class="price-section" v-if="product.type == 2">
-			<view class="price-info">
-				<text class="deposit-price">定金¥<text class="deposit-price-val">{{ selectedDepositText }}</text></text>
-				<text class="total-price">商品总价¥{{ selectedPriceText }}</text>
+		<view class="price-section" v-if="product.isReservation || product.type == 2">
+			<view class="price-info" v-if="isPricePending">
+				<text class="deposit-price">待公布</text>
 			</view>
-			<view class="countdown" v-if="product.endTimeStamp">
-				<text class="countdown-text">{{ product.isReservation ? '距离开售' : '预定时间剩余' }}</text>
+			<view class="price-info" v-else>
+				<text class="deposit-price">定金¥<text class="deposit-price-val">{{ selectedDepositText }}</text></text>
+				<text class="total-price">商品总价¥{{ selectedPriceText }}</text><text class="total-price">尾款¥{{ selectedBalanceText }}</text>
+			</view>
+			<view class="countdown" v-if="!product.isReservation && product.endTimeStamp">
+				<text class="countdown-text">距预订截止</text>
 				<text class="countdown-time">{{ countdown }}</text>
 			</view>
 		</view>
 
 		<!-- 商品信息 -->
 		<view class="product-info">
-			<view class="discount-info" v-if="product.deduct > 0" @tap="showDeductPopup">
+			<view class="discount-info" v-if="!isPricePending && product.deduct > 0" @tap="showDeductPopup">
 				<text class="discount-text">可使用积分抵扣，抵后到手价¥{{ discountedPriceText }}</text>
 				<text class="right-arrow"></text>
 			</view>
 
-			<view class="product-price" v-if="product.type == 1">
+			<view class="product-price" v-if="!isPricePending && product.type == 1">
 				<view class="price-deposit">￥<text class="fontBold">{{ selectedPriceText }}</text></view>
 			</view>
 
@@ -85,27 +88,21 @@
 		</view>
 
 		<!-- 预售时间信息 -->
-		<view class="presale-timeline" v-if="product.type == 2 && product.startTime && product.endTime">
+		<view class="presale-timeline" v-if="product.type == 2 && product.startTime">
 			<!-- 头部横幅 -->
 			<view class="presale-header">
 				<view class="presale-header-icon">✓</view>
-				<text class="presale-header-text">官方预定·优先发货·售后无忧</text>
+				<text class="presale-header-text">预售安排</text>
 			</view>
 			<!-- 主体内容 -->
 			<view class="presale-body">
 				<view class="presale-time-left">
-					<text class="presale-start-text">{{ formatPresaleDate(product.startTime) }} 开始预定</text>
-					<text class="presale-end-text">{{ formatPresaleEndDate(product.endTime) }}前 补款发货</text>
-				</view>
-				<!-- 时间轴 -->
-				<view class="presale-timeline-line">
-					<view class="timeline-dot-start"></view>
-					<view class="timeline-progress" :style="{ width: timelineProgress + '%' }"></view>
-					<view class="timeline-dot-end"></view>
+					<text class="presale-start-text">{{ product.isReservation ? '暂定' : formatPresaleDate(product.startTime) + ' 开始预定' }}</text>
 				</view>
 			</view>
 		</view>
 
+		<view v-if="product.type == 2 && !product.isReservation" class="presale-payment-note"><text>发货时间：以商品详情及订单通知为准</text></view>
 		<!-- 标签页 -->
 		<view class="tabs">
 			<view class="tab-item" :class="contentTab == 1 ? 'active' : '' " @click="switchTab(1)">商品详情</view>
@@ -114,6 +111,18 @@
 
 		<view class="content">
 			<view class="contentDe" v-if="contentTab == 1">
+                <view v-if="product.video" class="product-video-block">
+                    <video id="productDetailVideo" :key="product.video" :src="product.video"
+                        class="product-detail-video" :controls="true" :autoplay="false"
+                        object-fit="contain" :show-center-play-btn="true" @play="pauseProductVideo('productDetailVideo')" @error="onProductVideoError(1)" />
+                    <text v-if="videoError" class="product-video-error">视频暂时无法播放，请稍后重试</text>
+                </view>
+                <view v-if="product.video2" class="product-video-block">
+                    <video id="productDetailVideo2" :key="product.video2" :src="product.video2"
+                        class="product-detail-video" :controls="true" :autoplay="false"
+                        object-fit="contain" :show-center-play-btn="true" @play="pauseProductVideo('productDetailVideo2')" @error="onProductVideoError(2)" />
+                    <text v-if="videoError2" class="product-video-error">视频暂时无法播放，请稍后重试</text>
+                </view>
 				<image v-for="(image, index) in product.content" :key="index" :src="image" class="c-img" mode="widthFix"></image>
 			</view>
 			<view class="contentDe" v-if="contentTab == 2">
@@ -168,10 +177,10 @@
 					<text>立即购买</text>
 				</view>
 			</view>
-			<!-- 预售商品：立即预约 -->
+			<!-- 预售商品：付定金预订 -->
 			<view class="order-type-btn" v-if="product.id && !product.isReservation && product.type == 2">
 				<view class="order-btn presale-btn" @click="handlePresaleOrder">
-					<text>立即预约</text>
+					<text>付定金预订</text>
 				</view>
 			</view>
 		</view>
@@ -199,7 +208,8 @@
 					<image :src="activePreviewImage" class="goods-img" mode="aspectFit"></image>
 					<view class="goods-text">
 						<view class="goods-name">{{ product.subtitle }} {{ product.title }}</view>
-						<view class="goods-price" v-if="product.type == 2">定金：¥{{ selectedDepositText }} · 总价：¥{{ selectedPriceText }}</view>
+						<view class="goods-price" v-if="isPricePending">待公布</view>
+						<view class="goods-price" v-else-if="product.type == 2">定金：¥{{ selectedDepositText }} · 总价：¥{{ selectedPriceText }}</view>
 						<view class="goods-price" v-else>¥{{ selectedPriceText }}</view>
 					</view>
 				</view>
@@ -226,7 +236,7 @@
 
 				<view class="add-cart-btn" @tap="addToOrder">
 					<text v-if="orderType == 1">加入购物车</text>
-					<text v-else-if="orderType == 2 && product.type == 2">立即预约</text>
+					<text v-else-if="orderType == 2 && product.type == 2">付定金预订</text>
 					<text v-else-if="orderType == 2">立即购买</text>
 				</view>
 			</view>
@@ -255,7 +265,9 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 				currentVersion: 0,
 				quantity: 1,
 				orderType: 1,
-				cartNumbers: 0,
+				videoError: false,
+                videoError2: false,
+                cartNumbers: 0,
 				productCollect: 0,
 				specExpanded: {
 					proportion: false,
@@ -269,6 +281,9 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 			}
 		},
 		computed: {
+			isPricePending() {
+				return !!this.product.isReservation || (this.product.type == 2 && !(this.selectedPrice > 0) && !(Number(this.selectedDepositText) > 0))
+			},
 			hasColorOptions() {
 				return Array.isArray(this.product.version) && this.product.version.length > 0
 			},
@@ -288,6 +303,7 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 				const amount = Number(raw || 0)
 				return Number.isFinite(amount) ? amount.toFixed(2) : '0.00'
 			},
+			selectedBalanceText() { return Math.max(0, this.selectedPrice - Number(this.selectedDepositText)).toFixed(2) },
 			selectedPriceText() {
 				return this.selectedPrice.toFixed(2)
 			},
@@ -312,30 +328,9 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 			hasProductSpecs() {
 				return !!(this.product.proportion || this.product.dimensions || this.product.material || this.product.copyright)
 			},
-			// 计算时间轴进度百分比
-			timelineProgress() {
-				if (!this.product.startTimeStamp || !this.product.endTimeStamp) {
-					return 0
-				}
-				const now = Math.floor(Date.now() / 1000)
-				const start = this.product.startTimeStamp
-				const end = this.product.endTimeStamp
-
-				if (now < start) {
-					return 0
-				}
-				if (now >= end) {
-					return 100
-				}
-
-				const total = end - start
-				const passed = now - start
-				const percentage = (passed / total) * 100
-				return Math.min(100, Math.max(0, percentage))
-			}
 		},
         onShow() { if(this.product.id){ this.getProductDetail(this.product.id) } },
-        onHide() { clearInterval(this.launchTimer); this.launchTimer=null },
+        onHide() { this.pauseProductVideo(); clearInterval(this.launchTimer); this.launchTimer=null },
 		onLoad(options) {
             this.shareProductId = options.id || ''
             // #ifdef MP-WEIXIN
@@ -371,6 +366,7 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 			}
 		},
 		onUnload() {
+            this.pauseProductVideo();
             clearInterval(this.launchTimer);
 			// 页面卸载时清除倒计时
 			if (this.countdownTimer) {
@@ -403,6 +399,16 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
         },
 
 		methods: {
+            pauseProductVideo(exceptId = '') {
+                if (this.contentTab != 1) return
+                ;[['video', 'productDetailVideo'], ['video2', 'productDetailVideo2']].forEach(([field, id]) => {
+                    if (this.product[field] && id !== exceptId) uni.createVideoContext(id, this).pause()
+                })
+            },
+            onProductVideoError(slot) {
+                if (slot === 2) this.videoError2 = true
+                else this.videoError = true
+            },
     async refreshStatus(){if(!uni.getStorageSync('token')){this.reservationStatus={};return}try{this.reservationStatus=await commerce('/reservation/status',{id:this.product.id})}catch(e){showError(e)}},
     follow(){
       if(!this.reservationBusy && !(this.reservationStatus.followed && this.reservationStatus.consent==='accept'))analytics.reservationClick(this.product.id)
@@ -425,6 +431,8 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 					}
 					const response = await api.product.detail(params)
 					if (response.code !== 200 || !response.data) throw new Error(response.msg || '商品不可用')
+                    this.videoError = false
+                    this.videoError2 = false
                     this.product = response.data
                     clearInterval(this.launchTimer)
                     if(this.product.isReservation){
@@ -619,15 +627,6 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 				return `${year}.${month}.${day}`
 			},
 
-			// 格式化预售结束日期：2026年9月30日
-			formatPresaleEndDate(dateStr) {
-				if (!dateStr) return ''
-				const date = new Date(dateStr.replace(/-/g, '/'))
-				const year = date.getFullYear()
-				const month = date.getMonth() + 1
-				const day = date.getDate()
-				return `${year}年${month}月${day}日`
-			},
 
 			hideDeductPopup() {
 				this.showDeduct = false
@@ -644,7 +643,7 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 				this.orderType = type
 			},
 
-			// 处理预售订单（立即预约）
+			// 处理预售订单（付定金预订）
 			handlePresaleOrder() {
 				const token = uni.getStorageSync('token')
 				if (!token) {
@@ -812,6 +811,11 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 </script>
 
 <style scoped>
+.presale-payment-note { padding:24rpx 30rpx; background:#f5f5f5; color:#555; font-size:26rpx; line-height:1.8; }
+.presale-payment-note text { display:block; }
+.product-video-block { width: 100%; margin-bottom: 20rpx; }
+.product-detail-video { display: block; width: 100%; height: 422rpx; background: #000; }
+.product-video-error { display: block; padding: 20rpx; color: #666; font-size: 24rpx; }
 	.product-detail {
 		background-color: #ffffff;
 		height: 100vh;
@@ -955,7 +959,6 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 	}
 
 	.presale-time-left {
-		margin-bottom: 40rpx;
 		display: flex;
 		flex-direction: row;
 		align-items: center;
@@ -966,60 +969,6 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 		color: #111111;
 		font-size: 24rpx;
 		font-weight: 600;
-	}
-
-	.presale-time-right {
-		margin-bottom: 30rpx;
-		text-align: right;
-	}
-
-	.presale-end-text {
-		color: #333333;
-		font-size: 24rpx;
-		font-weight: 500;
-	}
-
-	.presale-timeline-line {
-		position: relative;
-		height: 4rpx;
-		background-color: #d7d7d7;
-		border-radius: 2rpx;
-		margin-top: 20rpx;
-	}
-
-	.timeline-dot-start {
-		position: absolute;
-		left: 0;
-		top: 50%;
-		transform: translateY(-50%);
-		width: 16rpx;
-		height: 16rpx;
-		background-color: #111111;
-		border-radius: 50%;
-		border: 3rpx solid #ffffff;
-		box-shadow: 0 0 0 2rpx #111111;
-	}
-
-	.timeline-dot-end {
-		position: absolute;
-		right: 0;
-		top: 50%;
-		transform: translateY(-50%);
-		width: 16rpx;
-		height: 16rpx;
-		background-color: #ffffff;
-		border: 3rpx solid #111111;
-		border-radius: 50%;
-	}
-
-	.timeline-progress {
-		position: absolute;
-		left: 0;
-		top: 0;
-		height: 100%;
-		background-color: #111111;
-		width: 100%;
-		border-radius: 2rpx;
 	}
 
 	.spec-item {

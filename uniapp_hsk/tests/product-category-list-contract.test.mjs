@@ -46,12 +46,16 @@ const api = {
 	}
 }
 
+const browseSource = await readFile(new URL('../utils/catalog-browse.js', import.meta.url), 'utf8')
+const catalogBrowse = await import('data:text/javascript;base64,' + Buffer.from(browseSource).toString('base64'))
 const navigationTitles = []
 const runnableScript = scriptMatch[1]
 	.replace(/import\s+\{\s*api\s*\}\s+from\s+['"][^'"]+['"]/, 'const api = globalThis.api')
+	.replace(/import\s+\{[^}]+\}\s+from\s+['"][^'"]+catalog-browse\.js['"]/, 'const { browseProducts, productScales, productSubtitle, saleState, decodeSearchKeyword } = globalThis.catalogBrowse')
 	.replace('export default', 'globalThis.component =')
 
 const sandbox = {
+	catalogBrowse,
 	api,
 	uni: {
 		setNavigationBarTitle({ title }) { navigationTitles.push(title) },

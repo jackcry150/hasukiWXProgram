@@ -12,7 +12,7 @@ const orderDetail = await read('../pages/order/detail.vue')
 
 assert.match(detail, /<view class="spec-title">颜色<\/view>/, '商品详情必须明确提示选择颜色')
 assert.match(detail, /title: '请选择颜色'/, '未选到有效颜色时必须阻止购买')
-assert.match(detail, /version: this\.product\.version\[this\.currentVersion\]/, '加入购物车必须提交所选颜色')
+assert.match(detail, /version: this\.selectedColor/, '加入购物车必须提交所选颜色')
 assert.match(detail, /version=\$\{version\}/, '立即购买必须携带所选颜色')
 assert.match(detail, /variantImages\[this\.selectedColor\]/, '选中颜色后必须读取对应预览图')
 assert.match(detail, /variantPrices\[this\.selectedColor\]/, '选中颜色后必须读取对应款式价格')

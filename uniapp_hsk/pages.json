@@ -43,7 +43,7 @@
     {
       "path": "pages/collect/collect",
       "style": {
-        "navigationBarTitleText": "线上收藏卡"
+        "navigationBarTitleText": "心愿单"
       }
     },
     {
@@ -157,7 +157,7 @@
     {
       "path": "pages/my/privacy",
       "style": {
-        "navigationBarTitleText": "协议"
+        "navigationBarTitleText": "隐私政策"
       }
     },
     {
