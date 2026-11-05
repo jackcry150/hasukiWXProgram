@@ -27,11 +27,6 @@
 
 		<!-- 商品信息 -->
 		<view class="product-info">
-			<view class="discount-info" v-if="!isPricePending && product.deduct > 0" @tap="showDeductPopup">
-				<text class="discount-text">可使用积分抵扣，抵后到手价¥{{ discountedPriceText }}</text>
-				<text class="right-arrow"></text>
-			</view>
-
 			<view class="product-price" v-if="!isPricePending && product.type == 1">
 				<view class="price-deposit">￥<text class="fontBold">{{ selectedPriceText }}</text></view>
 			</view>
@@ -185,17 +180,6 @@
 			</view>
 		</view>
 
-		<view class="cart-popup" v-if="showDeduct">
-			<!-- 遮罩层 -->
-			<view class="mask"></view>
-			<!-- 弹窗内容 -->
-			<view class="popup-content-deduct">
-				<view class="deduct-title">最多可使用积分抵扣￥{{ product.deduct }}</view>
-				<view class="deduct-desc">*仅限在购买现货或支付尾款时使用</view>
-				<view class="deduct-btn" @tap="hideDeductPopup">知道了</view>
-			</view>
-		</view>
-
 		<!-- 加入购物车弹窗 -->
 		<view v-if="showPopup" class="cart-popup">
 			<!-- 遮罩层 -->
@@ -260,7 +244,6 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 				countdown: '--',
 				countdownTimer: null,
 				contentTab: 1,
-				showDeduct: false,
 				showPopup: false,
 				currentVersion: 0,
 				quantity: 1,
@@ -306,10 +289,6 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 			selectedBalanceText() { return Math.max(0, this.selectedPrice - Number(this.selectedDepositText)).toFixed(2) },
 			selectedPriceText() {
 				return this.selectedPrice.toFixed(2)
-			},
-			discountedPriceText() {
-				const deduct = Number(this.product.deduct || 0)
-				return Math.max(this.selectedPrice - (Number.isFinite(deduct) ? deduct : 0), 0).toFixed(2)
 			},
 			activePreviewImage() {
 				const colorImage = this.product.variantImages && this.selectedColor
@@ -584,14 +563,6 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 				}
 			},
 
-			showDeductPopup() {
-				this.showDeduct = true
-			},
-
-			hideDeductPopup() {
-				this.showDeduct = false
-			},
-
 			showSpecDetailPopup(type, value) {
 				// 如果内容超过20个字符，才显示弹窗，否则直接显示完整内容
 				if (value && value.length > 20) {
@@ -627,10 +598,6 @@ import { commerce, requireLogin, showError } from '@/utils/commerce.js'
 				return `${year}.${month}.${day}`
 			},
 
-
-			hideDeductPopup() {
-				this.showDeduct = false
-			},
 
 			//详情切换
 			switchTab(tabKey) {
