@@ -103,22 +103,6 @@
 					</view>
 				</view>
 			</view>
-			<view class="other-item snail-shells-item">
-				<view class="method-item">
-					<view class="method-label-wrap">
-						<text class="method-label">积分抵扣</text>
-						<text class="method-tip">10积分=¥1，最多抵扣20%</text>
-					</view>
-					<text class="auto-discount-tag" v-if="canUseSnailShells">自动抵扣</text>
-				</view>
-				<view class="snail-shells-detail" v-if="canUseSnailShells">
-					<text>可用 {{ availableSnailShells }} 积分</text>
-					<text>本单自动使用 {{ snailShellsToUse }} 积分，抵扣¥{{ snailShellsDiscountAmount }}</text>
-				</view>
-				<view class="snail-shells-detail disabled" v-else>
-					<text>{{ hasPresale ? '预售订单暂不支持积分抵扣' : '暂无可用积分' }}</text>
-				</view>
-			</view>
 			<!-- 支付方式 -->
 			<view class="other-item">
 				<view class="method-item">
@@ -153,8 +137,7 @@
 					<text class="presale-note">（尾款¥{{ totalBalanceAmount.toFixed(2) }}）</text>
 				</text>
 				<text class="total-text" v-else>
-					合计：<text class="total-text-val">¥{{ payablePrice }}</text>
-					<text class="discount-note" v-if="snailShellsToUse > 0">已抵扣¥{{ snailShellsDiscountAmount }}</text>
+					合计：<text class="total-text-val">¥{{ totalPrice }}</text>
 				</text>
 			</view>
 			<button class="submit-btn" :disabled="shippingQuoteLoading" @click="submitOrder">{{ shippingQuoteLoading ? '运费计算中' : '提交订单' }}</button>
@@ -164,8 +147,6 @@
 
 <script>
 	import { api } from '@/utils/request.js'
-	const SNAIL_SHELL_RATE = 10
-	const SNAIL_SHELL_MAX_PERCENT = 20
 
 	export default {
 		name: 'CreateOrder',
@@ -179,11 +160,9 @@
 				shippingQuoteLoading: false,
 				shippingQuoteError: '',
 				shippingQuoteRequestId: 0,
-				userInfo: {},
 			}
 		},
 		onLoad(options) {
-			this.loadUserProfile()
 			if (options.cartIds) {
 				// 来自购物车：传购物车ID和商品ID，通过接口获取商品详情
 				const cartIds = decodeURIComponent(options.cartIds || '').split(',').filter(Boolean)
@@ -266,42 +245,8 @@
 				}
 				return this.shippingQuote.label || ('¥' + parseFloat(this.shippingFee).toFixed(2))
 			},
-			availableSnailShells() {
-				return Math.max(parseInt(this.userInfo.snailShells || 0), 0)
-			},
-			maxSnailShells() {
-				if (this.hasPresale) return 0
-				const orderAmount = parseFloat(this.totalPrice) || 0
-				const maxDiscount = Math.floor(orderAmount * SNAIL_SHELL_MAX_PERCENT) / 100
-				const shellsByLimit = Math.floor(maxDiscount * SNAIL_SHELL_RATE)
-				const shellsByAmount = Math.floor(orderAmount * SNAIL_SHELL_RATE)
-				return Math.max(Math.min(this.availableSnailShells, shellsByLimit, shellsByAmount), 0)
-			},
-			canUseSnailShells() {
-				return !this.hasPresale && this.availableSnailShells > 0 && this.maxSnailShells > 0
-			},
-			snailShellsToUse() {
-				return this.canUseSnailShells ? this.maxSnailShells : 0
-			},
-			snailShellsDiscountAmount() {
-				return (this.snailShellsToUse / SNAIL_SHELL_RATE).toFixed(2)
-			},
-			payablePrice() {
-				const amount = (parseFloat(this.totalPrice) || 0) - (parseFloat(this.snailShellsDiscountAmount) || 0)
-				return Math.max(amount, 0).toFixed(2)
-			}
 		},
 		methods: {
-			async loadUserProfile() {
-				const token = uni.getStorageSync('token')
-				if (!token) return
-				try {
-					const res = await api.user.profile()
-					if (res.code === 200 && res.data) {
-						this.userInfo = res.data.userInfo || res.data || {}
-					}
-				} catch (e) {}
-			},
 			goLogin() {
 				uni.showModal({
 					content: '使用当前功能需要您进行登录，是否去登录?',
@@ -516,7 +461,6 @@
 						product: productMinimal,
 						address: { id: this.address.id },
 						remarks: this.remarks,
-						snailShells: this.snailShellsToUse,
 					}
 					const response = await api.order.create(params)
 					uni.hideLoading()
